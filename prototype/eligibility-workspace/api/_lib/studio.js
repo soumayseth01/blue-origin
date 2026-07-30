@@ -129,8 +129,10 @@ export function understandSource(record, requestedId) {
 
 export const citationSchema = {
   type: "object",
-  properties: { block_id: { type: "string" }, source_id: { type: "string" }, label: { type: "string" } },
-  required: ["block_id", "source_id", "label"], additionalProperties: false,
+  // Display labels are resolved from the authoritative source block after the
+  // model response is validated; the model only needs to return stable IDs.
+  properties: { block_id: { type: "string" }, source_id: { type: "string" } },
+  required: ["block_id", "source_id"], additionalProperties: false,
 };
 
 export const briefPointSchema = {
