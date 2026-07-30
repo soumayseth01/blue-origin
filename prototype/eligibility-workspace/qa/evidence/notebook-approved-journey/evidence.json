@@ -1,42 +1,33 @@
 {
-  "generated_at": "2026-07-30T19:28:00.000Z",
-  "production_url": "https://eligibility-workspace-nu.vercel.app",
-  "notebook_id": "bb9ce235-1b89-484d-a8a0-ac8f2ef6f921",
-  "notebook_title": "Help Eligibility Workers Explain, Verify, And Document",
-  "screens": {
-    "captured": 15,
-    "expected": 15,
-    "directory": "qa/evidence/notebook-approved-journey",
-    "visual_status": "passed"
-  },
-  "grounding": {
-    "source_count": 1,
-    "source_summary": "current",
-    "content_brief": "approved",
-    "brief_version": 1,
-    "key_points": 4,
-    "all_key_points_cited": true
-  },
-  "outputs": {
-    "docx": { "http_status": 200, "bytes": 9187, "container_validation": "passed" },
-    "pdf": { "http_status": 200, "bytes": 1972, "format_validation": "PDF 1.7" },
-    "pptx": { "http_status": 200, "bytes": 78379, "container_validation": "passed", "slides": 5 },
-    "quiz_html": { "http_status": 200, "bytes": 5240, "questions": 4 },
-    "quiz_json": { "http_status": 200, "bytes": 4616, "questions": 4, "all_answers_valid": true, "all_questions_cited": true },
-    "srt": { "http_status": 200, "bytes": 714, "scenes": 5 },
-    "mp4": { "status": "blocked", "reason": "Direct credential validation returns 401 Unauthorized; the production HeyGen request also times out before inventory can be loaded." }
-  },
-  "release": {
-    "presentation_version": 1,
-    "video_derived_from_presentation": true,
-    "publish_enabled": false,
-    "reason": "Publishing correctly remains gated until HeyGen returns a real MP4."
-  },
-  "automated_checks": {
-    "npm_run_check": "passed",
-    "javascript_syntax": "passed",
-    "git_diff_check": "passed",
-    "production_notebook_api": 200,
-    "production_integrations_api": 200
-  }
+  "base_url": "https://eligibility-workspace-nu.vercel.app",
+  "notebook_id": "a4120f48-1a8b-470d-a39e-84302c0dad01",
+  "status": "published",
+  "workflow_stage": "published",
+  "published_version": 1,
+  "brief_version": 1,
+  "presentation_version": 1,
+  "video_derived_from_version": 1,
+  "video_status": "ready",
+  "heygen_video_id": "11ea669475a048498548f5ef95e2b81a",
+  "video_url": "https://eligibility-workspace-nu.vercel.app/api/studio/notebooks/a4120f48-1a8b-470d-a39e-84302c0dad01/video-file",
+  "video_archive_pathname": "notebook-releases/a4120f48-1a8b-470d-a39e-84302c0dad01/11ea669475a048498548f5ef95e2b81a.mp4",
+  "review_due_at": "2027-02-25T12:00:00.000Z",
+  "release_count": 1,
+  "source_count": 1,
+  "output_formats": [
+    "quiz",
+    "video",
+    "job_aid",
+    "presentation"
+  ],
+  "release_checks_passed": 6,
+  "mp4_head_status": 200,
+  "mp4_content_type": "video/mp4",
+  "mp4_bytes": 12168892,
+  "mp4_duration_seconds": 43.56,
+  "mp4_video_codec": "h264",
+  "mp4_audio_codec": "aac",
+  "mp4_dimensions": "1280x720",
+  "srt_bytes": 914,
+  "verified_at": "2026-07-30T20:52:34.000Z"
 }

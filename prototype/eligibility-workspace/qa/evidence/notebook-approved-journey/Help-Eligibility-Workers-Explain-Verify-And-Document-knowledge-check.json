@@ -1,0 +1,135 @@
+{
+  "title": "Help Eligibility Workers Explain, Verify, And Document — Knowledge check",
+  "format": "quiz",
+  "status": "draft",
+  "questions": [
+    {
+      "id": "question-1",
+      "type": "multiple_choice",
+      "points": 1,
+      "prompt": "Which response best reflects the approved guidance about the requirement?",
+      "options": [
+        "Eligibility workers must explain which household changes must be reported and the applicable reporting deadline.",
+        "Apply the same rule to every program without checking the source.",
+        "Wait until the next scheduled review before documenting the change.",
+        "Skip verification and close the case immediately."
+      ],
+      "shuffle": true,
+      "citations": [
+        {
+          "label": "Household change reporting",
+          "block_id": "block:text-544bbf3f-b44b-4bda-982f-861db229d2d7-dfed38c50fa45969",
+          "source_id": "text:544bbf3f-b44b-4bda-982f-861db229d2d7"
+        }
+      ],
+      "difficulty": "applied",
+      "explanation": "Eligibility workers must explain which household changes must be reported and the applicable reporting deadline.",
+      "correct_index": 0
+    },
+    {
+      "id": "question-2",
+      "type": "multiple_choice",
+      "points": 1,
+      "prompt": "Which response best reflects the approved guidance about the required action?",
+      "options": [
+        "When electronic data is incomplete, eligibility workers should request acceptable proof and explain available options clearly.",
+        "Apply the same rule to every program without checking the source.",
+        "Wait until the next scheduled review before documenting the change.",
+        "Skip verification and close the case immediately."
+      ],
+      "shuffle": true,
+      "citations": [
+        {
+          "label": "Verification",
+          "block_id": "block:text-544bbf3f-b44b-4bda-982f-861db229d2d7-cceef037d7795d8a",
+          "source_id": "text:544bbf3f-b44b-4bda-982f-861db229d2d7"
+        }
+      ],
+      "difficulty": "applied",
+      "explanation": "When electronic data is incomplete, eligibility workers should request acceptable proof and explain available options clearly.",
+      "correct_index": 0
+    },
+    {
+      "id": "question-3",
+      "type": "multiple_choice",
+      "points": 1,
+      "prompt": "Which response best reflects the approved guidance about verification?",
+      "options": [
+        "Program-specific reporting requirements must be explicit, without combining different deadlines into a universal rule.",
+        "Apply the same rule to every program without checking the source.",
+        "Wait until the next scheduled review before documenting the change.",
+        "Skip verification and close the case immediately."
+      ],
+      "shuffle": true,
+      "citations": [
+        {
+          "label": "Program differences",
+          "block_id": "block:text-544bbf3f-b44b-4bda-982f-861db229d2d7-de9b6a3fc296e5d8",
+          "source_id": "text:544bbf3f-b44b-4bda-982f-861db229d2d7"
+        }
+      ],
+      "difficulty": "applied",
+      "explanation": "Program-specific reporting requirements must be explicit, without combining different deadlines into a universal rule.",
+      "correct_index": 0
+    },
+    {
+      "id": "question-4",
+      "type": "multiple_choice",
+      "points": 1,
+      "prompt": "Which response best reflects the approved guidance about exceptions?",
+      "options": [
+        "Eligibility workers need to confirm reported changes, identify the affected program, request necessary evidence, document the action taken, and inform the household of the next steps.",
+        "Apply the same rule to every program without checking the source.",
+        "Wait until the next scheduled review before documenting the change.",
+        "Skip verification and close the case immediately."
+      ],
+      "shuffle": true,
+      "citations": [
+        {
+          "label": "Worker checklist",
+          "block_id": "block:text-544bbf3f-b44b-4bda-982f-861db229d2d7-fcf02ef2b17e7cbe",
+          "source_id": "text:544bbf3f-b44b-4bda-982f-861db229d2d7"
+        }
+      ],
+      "difficulty": "applied",
+      "explanation": "Eligibility workers need to confirm reported changes, identify the affected program, request necessary evidence, document the action taken, and inform the household of the next steps.",
+      "correct_index": 0
+    },
+    {
+      "id": "question-5",
+      "type": "multiple_choice",
+      "points": 1,
+      "prompt": "Which response best reflects the approved guidance about the requirement?",
+      "options": [
+        "Eligibility workers must thoroughly document all aspects of a reported change to ensure compliance and accurate record-keeping.",
+        "Apply the same rule to every program without checking the source.",
+        "Wait until the next scheduled review before documenting the change.",
+        "Skip verification and close the case immediately."
+      ],
+      "shuffle": true,
+      "citations": [
+        {
+          "label": "Household change reporting",
+          "block_id": "block:text-544bbf3f-b44b-4bda-982f-861db229d2d7-dfed38c50fa45969",
+          "source_id": "text:544bbf3f-b44b-4bda-982f-861db229d2d7"
+        },
+        {
+          "label": "Worker checklist",
+          "block_id": "block:text-544bbf3f-b44b-4bda-982f-861db229d2d7-fcf02ef2b17e7cbe",
+          "source_id": "text:544bbf3f-b44b-4bda-982f-861db229d2d7"
+        }
+      ],
+      "difficulty": "applied",
+      "explanation": "Eligibility workers must thoroughly document all aspects of a reported change to ensure compliance and accurate record-keeping.",
+      "correct_index": 0
+    }
+  ],
+  "project_id": "quiz:0ae13005-4500-4e49-8f4f-4dc0838324c6",
+  "source_ids": [
+    "text:544bbf3f-b44b-4bda-982f-861db229d2d7"
+  ],
+  "updated_at": "2026-07-30T20:42:36.404Z",
+  "notebook_id": "a4120f48-1a8b-470d-a39e-84302c0dad01",
+  "brief_version": 1,
+  "selected_question_id": "question-1"
+}
