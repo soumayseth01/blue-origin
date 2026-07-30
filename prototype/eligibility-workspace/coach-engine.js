@@ -157,7 +157,7 @@
     }
 
     if (stageId === "authorization" && !context.callEnded) {
-      return recommendation(context, "close", { action_id: "end-call", label: "End call", stage_id, provenance: "Call closure procedure", safe_to_reveal: true }, {
+      return recommendation(context, "close", { action_id: "end-call", label: "End call", stage_id: stageId, provenance: "Call closure procedure", safe_to_reveal: true }, {
         title: "Summarize the result and close the call",
         instruction: "Explain pending items and next steps, invite final questions, then end the simulated call.",
       });

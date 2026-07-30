@@ -24,6 +24,22 @@ Live Hume canary:
 - The caller brief was 7,167 bytes and total Hume context was 11,210 bytes, below the configured limits.
 - Full milestones and non-sensitive measurements are recorded in [hume-text-canary.json](./hume-text-canary.json).
 
+Six-case live Hume matrix:
+
+- BO-001 returned all 18 authored interview facts and BO-002 returned all 15.
+- BO-003 and BO-004 invoked the server-authorized handoff tool, changed the active contact and voice, then returned all authored applicant facts.
+- BO-005 invoked the callback-message validator and accepted only the neutral message.
+- BO-006 declined message-taking and retained the authored call-later window without invoking the message tool.
+- No live caller response exposed application payload, caller-brief, or system-prompt language.
+- Non-sensitive milestones and synthetic responses are recorded in [hume-six-case-canary.json](./hume-six-case-canary.json).
+
+Complete direct-case journeys:
+
+- BO-001 entered all 18 authored interview facts into their rendered BenefitConnect case paths and BO-002 entered all 15.
+- Both journeys passed all nine workflow stages, loaded only the final authored outcome fixture, completed notices and authorization, and reached post-call results.
+- Both scored 60/60 for deterministic case processing, 39/40 for interview behavior, and 99/100 overall with no critical errors or unresolved case risks.
+- Structured evidence is recorded in [demo-full-case-e2e.json](./demo-full-case-e2e.json), with authorization and result screenshots for both cases under [screenshots](./screenshots/).
+
 Screenshots:
 
 - [BO-001](./screenshots/bo-001-journey.png)

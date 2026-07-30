@@ -51,13 +51,13 @@
 - [x] Verify every BO-001 and BO-002 authored question/answer pair maps to its exact frozen fact and case path.
 - [x] Provide developer text-QA mode using the live Hume prompt, brief, tools, and route.
 - [x] Canary BO-001 greeting and one rich factual answer with generated Hume audio.
-- [ ] Run a full factual question matrix for all six callers in live Hume text mode.
-- [ ] Run live Hume handoff canaries for BO-003 and BO-004, including actual voice/context change.
-- [ ] Run live unavailable-contact/message canaries for BO-005 and BO-006.
-- [ ] Complete an end-to-end BO-001 and BO-002 interview through field entry, evidence, authored outcome, notices, authorization, and results.
+- [x] Run a full factual question matrix for all six callers in live Hume text mode.
+- [x] Run live Hume handoff canaries for BO-003 and BO-004, including actual voice/context change.
+- [x] Run live unavailable-contact/message canaries for BO-005 and BO-006.
+- [x] Complete an end-to-end BO-001 and BO-002 interview through field entry, evidence, authored outcome, notices, authorization, and results.
 - [ ] Perform human-audible Safari and Chrome canaries for direct, handoff, and unavailable routes.
 - [x] Deploy the transcript-to-fact synchronization change to Vercel and repeat the full six-case browser suite against production.
 
 ## Current implementation focus
 
-The transcript-to-fact synchronization bridge is the current release item. It deterministically compares the learner’s question and Hume’s answer with the frozen truth ledger. Only authored matches are recorded; unsupported or unknown responses do not populate facts. The first matched fact drives proactive field focus, and all recorded matches remain attached to the caller turn for scoring and replay.
+All automated release gates are complete. The remaining gate is a supervised human-audible pass in current Safari and Chrome for direct, handoff, and unavailable routes; automated checks can prove that Hume produced and delivered audio events, but cannot certify what a person hears through the selected device.

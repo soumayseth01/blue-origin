@@ -1295,7 +1295,7 @@ function currentScreenAsset() {
 }
 
 function targetValue(target) {
-  if (target.binding && target.binding in state.closure) return state.closure[target.binding];
+  if (target.binding && target.binding in state.closure) return target.binding === "closingSummary" ? (state.closure[target.binding] ? "Yes" : "") : state.closure[target.binding];
   if (target.binding && target.binding in state.form) return state.form[target.binding];
   return state.screenValues[state.activeScreen]?.[target.target_id] ?? "";
 }
@@ -2401,7 +2401,11 @@ function bindScreenFields() {
       if (target.control_type === "currency") after = String(after).replace(/[^0-9.]/g, "");
       state.screenValues[state.activeScreen] ||= {};
       state.screenValues[state.activeScreen][target.target_id] = after;
-      if (target.binding && target.binding in state.closure) state.closure[target.binding] = target.binding === "closingSummary" ? after === "Yes" : Boolean(after);
+      if (target.binding && target.binding in state.closure) {
+        state.closure[target.binding] = target.binding === "closingSummary" ? after === "Yes" : Boolean(after);
+        const completionLabel = document.querySelector('[data-section-id="authorization-checklist"] summary small');
+        if (completionLabel) completionLabel.textContent = `${Object.values(state.closure).filter(Boolean).length} of 4 complete`;
+      }
       else if (target.binding) state.form[target.binding] = after;
       if (target.control_type === "button") event.currentTarget.textContent = after === "resolved" ? "Resolved" : "Reviewed";
       state.validated = false;
@@ -2450,7 +2454,7 @@ function syncFooter() {
 }
 
 function targetValueForStage(target, stageId) {
-  if (target.binding && target.binding in state.closure) return state.closure[target.binding];
+  if (target.binding && target.binding in state.closure) return target.binding === "closingSummary" ? (state.closure[target.binding] ? "Yes" : "") : state.closure[target.binding];
   if (target.binding && target.binding in state.form) return state.form[target.binding];
   return state.screenValues[stageId]?.[target.target_id] ?? "";
 }

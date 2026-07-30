@@ -82,4 +82,16 @@ assert.equal(authoredRun.action_type, "explain");
 assert.equal(authoredRun.target.action_id, "run-mock-eligibility");
 assert.match(authoredRun.instruction, /does not calculate or change/i);
 
-console.log(JSON.stringify({ ask: true, enter: true, evidence: true, correction: true, validate: true, navigate: true, authoredFixtureBoundary: true }, null, 2));
+const close = coach.recommend(context({
+  stageId: "authorization",
+  stageLabel: "Authorization",
+  evidenceReviewed: true,
+  currentStageValidated: true,
+  callEnded: false,
+  nextStage: null,
+}));
+assert.equal(close.action_type, "close");
+assert.equal(close.target.stage_id, "authorization");
+assert.equal(close.target.action_id, "end-call");
+
+console.log(JSON.stringify({ ask: true, enter: true, evidence: true, correction: true, validate: true, navigate: true, close: true, authoredFixtureBoundary: true }, null, 2));

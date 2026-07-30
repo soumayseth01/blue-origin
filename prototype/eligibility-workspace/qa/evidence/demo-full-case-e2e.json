@@ -1,0 +1,375 @@
+{
+  "generated_at": "2026-07-30T20:13:37.653Z",
+  "base_url": "http://127.0.0.1:8112",
+  "browser": "Chromium headless",
+  "passed": true,
+  "console_errors": [],
+  "scenarios": [
+    {
+      "id": "BO-001",
+      "case_id": "CASE-BO-2401",
+      "facts": 18,
+      "fact_results": [
+        {
+          "fact_id": "bo001-marital",
+          "case_path": "people.0.maritalStatus",
+          "value": "Separated",
+          "coach_located": true
+        },
+        {
+          "fact_id": "bo001-tax",
+          "case_path": "people.0.taxFilingStatus",
+          "value": "Files taxes",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo001-dependent",
+          "case_path": "people.0.claimedAsDependent",
+          "value": "No",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo001-leo-dob",
+          "case_path": "people.1.dateOfBirth",
+          "value": "2018-11-03",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo001-sofia-dob",
+          "case_path": "people.2.dateOfBirth",
+          "value": "2022-09-14",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo001-food",
+          "case_path": "people.0.snapFoodTogether",
+          "value": "Yes",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo001-due-date",
+          "case_path": "people.0.dueDate",
+          "value": "2027-02-18",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo001-hours",
+          "case_path": "incomeSources.0.hoursPerWeek",
+          "value": "24",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo001-frequency",
+          "case_path": "incomeSources.0.frequency",
+          "value": "Twice monthly",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo001-gross",
+          "case_path": "incomeSources.0.grossAmount",
+          "value": "910",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo001-change-date",
+          "case_path": "incomeSources.0.changeDate",
+          "value": "2026-06-15",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo001-rent",
+          "case_path": "expenses.shelter.amount",
+          "value": "1275",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo001-utility-status",
+          "case_path": "expenses.utilitiesStatus",
+          "value": "One or more",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo001-electric",
+          "case_path": "expenses.utilities.0.amount",
+          "value": "145",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo001-care",
+          "case_path": "expenses.dependentCare.0.amount",
+          "value": "320",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo001-resources",
+          "case_path": "resourcesStatus",
+          "value": "One or more",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo001-checking",
+          "case_path": "resources.0.value",
+          "value": "210",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo001-coverage",
+          "case_path": "nonfinancial.healthCoverage",
+          "value": "No other coverage",
+          "coach_located": false
+        }
+      ],
+      "stage_results": [
+        {
+          "stage": "intake",
+          "passed": true,
+          "checks": 2
+        },
+        {
+          "stage": "household",
+          "passed": true,
+          "checks": 2
+        },
+        {
+          "stage": "programs",
+          "passed": true,
+          "checks": 2
+        },
+        {
+          "stage": "financial",
+          "passed": true,
+          "checks": 3
+        },
+        {
+          "stage": "nonfinancial",
+          "passed": true,
+          "checks": 2
+        },
+        {
+          "stage": "evidence",
+          "passed": true,
+          "checks": 2
+        },
+        {
+          "stage": "eligibility",
+          "passed": true,
+          "checks": 2
+        },
+        {
+          "stage": "notices",
+          "passed": true,
+          "checks": 2
+        },
+        {
+          "stage": "authorization",
+          "passed": true,
+          "checks": 4
+        }
+      ],
+      "attempt": {
+        "attempt_id": "attempt:bo-1785442401232",
+        "scenario_id": "BO-001",
+        "score": 99,
+        "processing_score": 60,
+        "interview_score": 39,
+        "passed": true,
+        "critical_errors": 0,
+        "unresolved_case_risks": [],
+        "validated_screens": [
+          "intake",
+          "household",
+          "programs",
+          "financial",
+          "nonfinancial",
+          "evidence",
+          "eligibility",
+          "notices",
+          "authorization"
+        ],
+        "authored_result_status": "final",
+        "disclosed_fact_count": 18,
+        "event_count": 100,
+        "voice_turn_count": 57,
+        "completion_state": "complete"
+      },
+      "screenshots": [
+        "/Users/soumayseth/Documents/BlueOrigin/prototype/eligibility-workspace/qa/evidence/screenshots/bo-001-full-authorization.png",
+        "/Users/soumayseth/Documents/BlueOrigin/prototype/eligibility-workspace/qa/evidence/screenshots/bo-001-full-results.png"
+      ]
+    },
+    {
+      "id": "BO-002",
+      "case_id": "CASE-BO-2402",
+      "facts": 15,
+      "fact_results": [
+        {
+          "fact_id": "bo002-marital",
+          "case_path": "people.0.maritalStatus",
+          "value": "Divorced",
+          "coach_located": true
+        },
+        {
+          "fact_id": "bo002-nia-dob",
+          "case_path": "people.1.dateOfBirth",
+          "value": "2010-03-22",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo002-move-date",
+          "case_path": "people.1.moveInDate",
+          "value": "2026-07-01",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo002-custody",
+          "case_path": "people.1.sharedCustody",
+          "value": "Primary residence here",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo002-food",
+          "case_path": "people.0.snapFoodTogether",
+          "value": "Yes",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo002-dependent",
+          "case_path": "people.1.claimedAsDependent",
+          "value": "Yes",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo002-rate",
+          "case_path": "incomeSources.0.hourlyRate",
+          "value": "15",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo002-hours",
+          "case_path": "incomeSources.0.hoursPerWeek",
+          "value": "38",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo002-frequency",
+          "case_path": "incomeSources.0.frequency",
+          "value": "Every two weeks",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo002-gross",
+          "case_path": "incomeSources.0.grossAmount",
+          "value": "1140",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo002-start",
+          "case_path": "incomeSources.0.changeDate",
+          "value": "2026-07-08",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo002-rent",
+          "case_path": "expenses.shelter.amount",
+          "value": "1440",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo002-utility-status",
+          "case_path": "expenses.utilitiesStatus",
+          "value": "One or more",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo002-heating",
+          "case_path": "expenses.utilities.0.amount",
+          "value": "165",
+          "coach_located": false
+        },
+        {
+          "fact_id": "bo002-coverage",
+          "case_path": "nonfinancial.healthCoverage",
+          "value": "No other coverage",
+          "coach_located": false
+        }
+      ],
+      "stage_results": [
+        {
+          "stage": "intake",
+          "passed": true,
+          "checks": 2
+        },
+        {
+          "stage": "household",
+          "passed": true,
+          "checks": 2
+        },
+        {
+          "stage": "programs",
+          "passed": true,
+          "checks": 2
+        },
+        {
+          "stage": "financial",
+          "passed": true,
+          "checks": 3
+        },
+        {
+          "stage": "nonfinancial",
+          "passed": true,
+          "checks": 2
+        },
+        {
+          "stage": "evidence",
+          "passed": true,
+          "checks": 2
+        },
+        {
+          "stage": "eligibility",
+          "passed": true,
+          "checks": 2
+        },
+        {
+          "stage": "notices",
+          "passed": true,
+          "checks": 2
+        },
+        {
+          "stage": "authorization",
+          "passed": true,
+          "checks": 4
+        }
+      ],
+      "attempt": {
+        "attempt_id": "attempt:bo-1785442414148",
+        "scenario_id": "BO-002",
+        "score": 99,
+        "processing_score": 60,
+        "interview_score": 39,
+        "passed": true,
+        "critical_errors": 0,
+        "unresolved_case_risks": [],
+        "validated_screens": [
+          "intake",
+          "household",
+          "programs",
+          "financial",
+          "nonfinancial",
+          "evidence",
+          "eligibility",
+          "notices",
+          "authorization"
+        ],
+        "authored_result_status": "final",
+        "disclosed_fact_count": 15,
+        "event_count": 91,
+        "voice_turn_count": 48,
+        "completion_state": "complete"
+      },
+      "screenshots": [
+        "/Users/soumayseth/Documents/BlueOrigin/prototype/eligibility-workspace/qa/evidence/screenshots/bo-002-full-authorization.png",
+        "/Users/soumayseth/Documents/BlueOrigin/prototype/eligibility-workspace/qa/evidence/screenshots/bo-002-full-results.png"
+      ]
+    }
+  ]
+}
