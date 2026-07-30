@@ -96,9 +96,23 @@ try {
 
   await page.locator('[data-nj-action="generate-summary"]').click();
   await page.getByText("Grounded in selected documents", { exact: true }).waitFor({ timeout: 90000 });
-  await page.locator("#njChatInput").fill("What should an eligibility worker document after a household reports a change?");
-  await page.locator("#njChatForm").evaluate((form) => form.requestSubmit());
-  await page.locator('[data-nj-action^="add-chat-point:"]').waitFor({ timeout: 90000 });
+  let chatError = "Notebook chat did not return a supported answer";
+  for (let attempt = 1; attempt <= 3 && !(await page.locator('[data-nj-action^="add-chat-point:"]').count()); attempt += 1) {
+    await page.locator("#njChatInput").fill("What should an eligibility worker document after a household reports a change?");
+    try {
+      const responsePromise = page.waitForResponse(
+        (response) => response.request().method() === "POST" && response.url().endsWith(`/api/studio/notebooks/${notebookId}/chat`),
+        { timeout: 120000 },
+      );
+      await page.locator("#njChatForm").evaluate((form) => form.requestSubmit());
+      const response = await responsePromise;
+      if (!response.ok()) chatError = `Notebook chat attempt ${attempt} failed (${response.status()}): ${(await response.text()).slice(0, 500)}`;
+      await page.locator('[data-nj-action^="add-chat-point:"]').waitFor({ timeout: 15000 }).catch(() => {});
+    } catch (error) {
+      chatError = `Notebook chat attempt ${attempt} timed out: ${error.message}`;
+    }
+  }
+  assert.ok(await page.locator('[data-nj-action^="add-chat-point:"]').count(), chatError);
   await page.locator('[data-nj-action^="add-chat-point:"]').click();
   await shot(5, "source-summary-chat");
 
