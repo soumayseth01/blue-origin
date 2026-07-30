@@ -8,7 +8,7 @@ const sourceIds = {
   qc: "source:0ksit6sieoou6o1segr2",
 };
 
-const DEMO_CALLER_BRIEF_VERSION = "demo-caller-brief-v1";
+const DEMO_CALLER_BRIEF_VERSION = "demo-caller-brief-v2";
 const DEMO_CALLER_BRIEF_MAX_BYTES = 8192;
 
 const productRoutes = {
@@ -449,6 +449,25 @@ const demoTargetMap = {
   ],
 };
 
+function scenarioTargetsForStage(stageId, scenario = getScenario()) {
+  const targets = (demoTargetMap[stageId] || []).filter((target) => {
+    if (["household-food-unit", "program-food-group", "program-expedited"].includes(target.target_id)) return scenario.programs.includes("SNAP");
+    return true;
+  });
+  const people = scenario.integratedCase?.people || [];
+  const foodUnit = people.map((person) => person.name).filter(Boolean).join(people.length > 2 ? ", " : " and ").replace(/, ([^,]+)$/, ", and $1");
+  const ledgerValue = (path) => scenario.truthLedger?.find((fact) => fact.case_path === path)?.normalized_value;
+  const overrides = {
+    "intake-interview-date": { expected_value_rule: scenario.integratedCase?.application?.receivedDate || "2026-07-29" },
+    "household-relationship": { semantic_description: `${scenario.persona.name} relationship`, expected_value_rule: "Self" },
+    "program-food-group": { semantic_description: "Food assistance group", expected_value_rule: foodUnit, options: ["", foodUnit, ...people.map((person) => `${person.name} only`)] },
+    "program-expedited": { expected_value_rule: scenario.id === "BO-005" ? "Screened — yes" : "Screened — no" },
+    "financial-pay-frequency": { expected_value_rule: ledgerValue("incomeSources.0.frequency") || scenario.integratedCase?.incomeSources?.[0]?.frequency || "Monthly" },
+    "financial-gross-amount": { expected_value_rule: ledgerValue("incomeSources.0.grossAmount") || scenario.integratedCase?.incomeSources?.[0]?.grossAmount || scenario.expected.income },
+  };
+  return targets.map((target) => ({ ...target, ...(overrides[target.target_id] || {}) }));
+}
+
 const eligibilitySystemDefinition = {
   system_id: "eligibility-system:benefitconnect-demo",
   version: "v3.0-integrated-demo",
@@ -484,10 +503,22 @@ const federalFeedbackRubric = {
 };
 
 scenarios.forEach((scenario) => {
-  scenario.integratedCase = BenefitConnectIntegrated.createCase(scenario);
-  scenario.contactSequence = createDefaultContactSequence(scenario);
+  const baseCase = BenefitConnectIntegrated.createCase(scenario);
+  const bundle = window.BlueOriginDemoScenarios?.compileScenario?.(
+    scenario,
+    baseCase,
+    callerVoices,
+    scenarioCallerAssignments[scenario.id],
+  );
+  scenario.integratedCase = bundle?.integratedCase || baseCase;
+  scenario.contactSequence = bundle?.contactSequence || createDefaultContactSequence(scenario);
+  scenario.truthLedger = bundle?.truthLedger || [];
+  scenario.interviewFacts = bundle?.interviewFacts || [];
+  scenario.coachJourney = bundle?.coachJourney || [];
+  scenario.demoCaseValidation = bundle?.validation || { valid: true, errors: [] };
+  scenario.demoCaseBundleVersion = bundle?.version || "legacy-demo-case";
   scenario.callerBrief = buildDemoCallerBriefDefinition(scenario, scenario.integratedCase);
-  scenario.trainingTargets = Object.entries(demoTargetMap).flatMap(([stageId, targets]) => targets.map((target) => ({ ...target, stageId })));
+  scenario.trainingTargets = workflow.flatMap(({ id: stageId }) => scenarioTargetsForStage(stageId, scenario).map((target) => ({ ...target, stageId })));
   scenario.authoredOutcomeVariants = scenario.integratedCase.authoredOutcomes;
 });
 
@@ -522,15 +553,18 @@ function createDemoScreenPack() {
 function buildCaseStartingState(scenario) {
   const isInitial = scenario.type === "Initial application";
   const isRenewal = scenario.type === "Renewal";
+  const application = scenario.integratedCase?.application || {};
+  const primaryApplicant = scenario.integratedCase?.people?.[0] || {};
+  const receivedDate = application.receivedDate || "2026-07-29";
   return {
     scenario_id: scenario.id,
     application_type: scenario.type,
     existing_case: !isInitial,
     initial_screen: "household",
-    application_received_at: "2026-07-29T08:12:00-07:00",
+    application_received_at: `${receivedDate}T08:12:00-07:00`,
     prefilled_fields: {
-      fullName: { value: scenario.persona.name, provenance: isInitial ? "Application" : "Existing case", verification_status: "verified", editable: false },
-      dateOfBirth: { value: "09/14/1993", provenance: isInitial ? "Application" : "Existing case", verification_status: "verified", editable: false },
+      fullName: { value: primaryApplicant.name || scenario.persona.name, provenance: isInitial ? "Application" : "Existing case", verification_status: "verified", editable: false },
+      dateOfBirth: { value: primaryApplicant.dateOfBirth || "", provenance: isInitial ? "Application" : "Existing case", verification_status: primaryApplicant.dateOfBirth ? "verified" : "missing", editable: false },
       programs: { value: scenario.programs.join(", "), provenance: isInitial ? "Application" : "Existing case", verification_status: "confirmed", editable: false },
       relationship: { value: isInitial ? "" : "Self", provenance: isInitial ? "Client statement" : "Existing case", verification_status: isInitial ? "missing" : "requires confirmation", editable: true },
       income: { value: "", provenance: isRenewal ? "Existing case" : isInitial ? "Document" : "Reported change", verification_status: "requires review", editable: true },
@@ -581,6 +615,11 @@ const state = {
   mockEligibility: { status: "unrun", variant: null, lastRunAt: null },
   openCaseSections: null,
   disclosedFacts: new Set(),
+  conversationFactEvents: [],
+  handoffCompleted: false,
+  handoffAttempted: false,
+  callbackDisposition: null,
+  guidedFollow: true,
   elapsed: 0,
   validated: false,
   assessmentRecorded: false,
@@ -905,6 +944,30 @@ function locateCurrentTarget() {
   } else locate();
 }
 
+function focusConversationFactDestination(factEvent) {
+  if (!factEvent?.case_path || state.mode !== "practice" || !state.guidedFollow) return;
+  const stage = factEvent.destination_stage || (factEvent.case_path.startsWith("people.") ? "household" : factEvent.case_path.startsWith("incomeSources.") || factEvent.case_path.startsWith("expenses.") || factEvent.case_path.startsWith("resources") ? "financial" : factEvent.case_path.startsWith("nonfinancial.") ? "nonfinancial" : "intake");
+  const locate = () => {
+    const element = document.querySelector(`[data-case-path="${CSS.escape(factEvent.case_path)}"]`);
+    if (!element) return;
+    const accordion = element.closest("details.bc-accordion");
+    if (accordion) accordion.open = true;
+    element.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    element.focus({ preventScroll: true });
+    element.classList.add("located");
+    state.highlightedTargetId = factEvent.case_path;
+    addEvent("midscene", `Coach opened ${factEvent.label}`, { target: `case:${factEvent.case_path}`, after: "guided_follow", sequenceStatus: "caller_fact_destination", citation: `${SPEC_NOTE_ID} · Conversation fact mapping` });
+    window.setTimeout(() => {
+      element.classList.remove("located");
+      if (state.highlightedTargetId === factEvent.case_path) state.highlightedTargetId = null;
+    }, 5200);
+  };
+  if (stage && stage !== state.activeScreen) {
+    navigateWorkflowScreen(stage, "proactive coach");
+    window.requestAnimationFrame(() => window.requestAnimationFrame(locate));
+  } else window.requestAnimationFrame(locate);
+}
+
 function setCoachTab(tab) {
   state.coachTab = tab;
   document.querySelectorAll("[data-coach-tab]").forEach((button) => {
@@ -967,7 +1030,7 @@ function buildCoachContext() {
     stageId: state.activeScreen,
     stageLabel: workflow[activeIndex]?.label || state.activeScreen,
     mode: state.mode,
-    targets: (demoTargetMap[state.activeScreen] || []).filter((target) => visibleTargetIds.has(target.target_id)).map((target) => mappedCoachTarget(state.activeScreen, target)),
+    targets: scenarioTargetsForStage(state.activeScreen).filter((target) => visibleTargetIds.has(target.target_id)).map((target) => mappedCoachTarget(state.activeScreen, target)),
     visibleFields: collectVisibleCoachFields(),
     evidenceReviewed: state.evidenceReviewed,
     evidenceTarget: mappedCoachTarget("evidence", demoTargetMap.evidence[0]),
@@ -977,7 +1040,7 @@ function buildCoachContext() {
     validationFailures,
     callEnded: state.callEnded,
     nextStage,
-    nextStageTarget: nextStage && demoTargetMap[nextStage.id]?.[0] ? mappedCoachTarget(nextStage.id, demoTargetMap[nextStage.id][0]) : null,
+    nextStageTarget: nextStage && scenarioTargetsForStage(nextStage.id)[0] ? mappedCoachTarget(nextStage.id, scenarioTargetsForStage(nextStage.id)[0]) : null,
     policyPack: getScenario().coachPolicyPack || stateNeutralCoachPolicyPack,
   };
 }
@@ -1055,14 +1118,71 @@ function scheduleCoachEnhancement(context, deterministic) {
   }, 350);
 }
 
+function currentCasePathValue(path) {
+  return window.BlueOriginDemoScenarios?.getPath?.(state.caseDraft, path);
+}
+
+function normalizedCaseValue(value) {
+  if (value === true) return "true";
+  if (value === false) return "false";
+  return String(value ?? "").trim().toLowerCase().replace(/[$,]/g, "");
+}
+
+function journeyPolicy(stageId) {
+  const card = getScenario().coachPolicyPack?.cards?.[stageId] || getScenario().coachPolicyPack?.cards?.default || stateNeutralCoachPolicyPack.cards[stageId] || stateNeutralCoachPolicyPack.cards.default;
+  return { summary: card?.summary || "Use the caller’s confirmed answer and preserve its source.", scope: card?.scope || "Demonstration procedure", citation: card?.citation || `${SPEC_NOTE_ID} · Guided interview workflow`, citations: card?.citations || [] };
+}
+
+function buildJourneyRecommendation() {
+  const scenario = getScenario();
+  const route = state.humeSession.contactSequence || scenario.contactSequence;
+  if (!route || state.mode !== "practice" || state.callPhase !== "live") return null;
+  const activeId = state.humeSession.activeContactId || route.active_contact_id || route.answering_contact_id;
+  const intended = route.contacts?.find((contact) => contact.contact_id === route.intended_contact_id);
+  const active = route.contacts?.find((contact) => contact.contact_id === activeId) || route.contacts?.[0];
+  const make = (actionType, title, instruction, target, information = {}) => ({
+    recommendation_id: `journey:${scenario.id}:${actionType}:${target?.case_path || target?.action_id || target?.contact_id || "current"}`,
+    action_type: actionType,
+    action_label: actionType === "ask" ? "Ask the caller" : actionType === "enter" ? "Enter the answer" : actionType === "handoff" ? "Establish the contact" : actionType === "callback" ? "Close the callback" : "Next best action",
+    title,
+    instruction,
+    target: { stage_id: target?.stage_id || state.activeScreen, label: target?.label || "Current call", target_id: null, case_path: target?.case_path || null, action_id: target?.action_id || null, contact_id: target?.contact_id || null },
+    information: { value: information.value ?? null, provenance: information.provenance || "Caller statement", disclosed: Boolean(information.disclosed), question: information.question || null },
+    policy: journeyPolicy(target?.stage_id || state.activeScreen),
+    source: "deterministic_journey",
+  });
+
+  if (route.mode === "screened" && activeId !== route.intended_contact_id) {
+    if (!state.handoffAttempted) return make("handoff", `Ask to speak with ${intended?.name || scenario.persona.name}`, `Introduce yourself without discussing the case, then ask whether ${intended?.name || scenario.persona.name} is available.`, { action_id: "request-intended-contact", contact_id: intended?.contact_id, label: `Request ${intended?.name || scenario.persona.name}` }, { provenance: "Authored call route" });
+    if (route.intended_contact_availability !== "available_handoff") {
+      if (route.message_policy === "decline_message_offer_callback_window") return make("callback", `Confirm when to call ${intended?.name || scenario.persona.name} back`, `Do not leave case details. Thank ${active?.name || "the answerer"}, confirm ${route.callback_window || "the callback window"}, and end the call.`, { action_id: "end-unavailable-call", label: "Call later" }, { value: route.callback_window, provenance: "Authored contact availability", disclosed: true });
+      if (state.callbackDisposition === "callback_message_recorded") return make("callback", "Close the call professionally", "Thank the answering contact, repeat only the neutral callback request, and end the call.", { action_id: "end-unavailable-call", label: "End unavailable-contact call" }, { value: "Neutral callback message recorded", provenance: "Server-validated message", disclosed: true });
+      return make("callback", "Leave a neutral callback message", "Give only your name, agency, callback number, and a request to return the call. Do not mention a program, application, evidence, or case status.", { action_id: "record-callback-message", label: "Neutral callback message" }, { provenance: "Contact privacy rule" });
+    }
+  }
+
+  const ledger = scenario.truthLedger || [];
+  for (const fact of ledger) {
+    if (!fact.required) continue;
+    const disclosed = state.disclosedFacts.has(fact.fact_id);
+    if (!disclosed) return make("ask", `Ask about ${fact.label.toLowerCase()}`, fact.learner_question_examples?.[0] || `Ask one clear question about ${fact.label.toLowerCase()}.`, { case_path: fact.case_path, stage_id: fact.destination_stage, label: fact.label }, { question: fact.learner_question_examples?.[0] || null, provenance: "Not yet disclosed" });
+    if (fact.fact_state === "conversation_topic") continue;
+    const entered = currentCasePathValue(fact.case_path);
+    if (normalizedCaseValue(entered) !== normalizedCaseValue(fact.normalized_value)) {
+      return make("enter", `Enter ${fact.label.toLowerCase()}`, `The caller answered ${JSON.stringify(fact.natural_response)} Record the supported value in the mapped BenefitConnect field.`, { case_path: fact.case_path, stage_id: fact.destination_stage, label: fact.label }, { value: fact.normalized_value, provenance: fact.provenance || "Caller statement", disclosed: true });
+    }
+  }
+  return null;
+}
+
 function renderCoachGuidance() {
   if (dom.coachAssessmentLock) dom.coachAssessmentLock.hidden = state.visibilityPolicy.coach;
   if (dom.coachPracticeContent) dom.coachPracticeContent.hidden = !state.visibilityPolicy.coach;
   if (state.visibilityPolicy.coach && window.BenefitConnectCoach) {
     const context = buildCoachContext();
-    const deterministic = window.BenefitConnectCoach.recommend(context);
+    const deterministic = buildJourneyRecommendation() || window.BenefitConnectCoach.recommend(context);
     renderCoachRecommendation(deterministic, false);
-    scheduleCoachEnhancement(context, deterministic);
+    if (deterministic.source !== "deterministic_journey") scheduleCoachEnhancement(context, deterministic);
   }
   renderCallerSignal();
   renderLiveChecklist();
@@ -1140,7 +1260,18 @@ function setCallerAffect(next, label, trend = "steady", confidence = 0.7, detail
 
 function renderLiveChecklist() {
   if (!dom.liveChecklist) return;
-  const targets = demoTargetMap[state.activeScreen] || [];
+  const route = state.humeSession.contactSequence || getScenario().contactSequence;
+  if (route?.mode === "screened" && route.intended_contact_availability !== "available_handoff") {
+    const neutralMessageRequired = route.message_policy === "neutral_callback_only";
+    const items = [
+      { label: `Ask for ${getScenario().persona.name} without sharing case details`, done: state.handoffAttempted },
+      { label: neutralMessageRequired ? "Leave only an approved neutral callback message" : `Confirm ${route.callback_window || "when to call back"}`, done: neutralMessageRequired ? state.callbackDisposition === "callback_message_recorded" : state.handoffAttempted },
+      { label: "Close the unavailable-contact call", done: state.callEnded },
+    ];
+    dom.liveChecklist.innerHTML = items.map((item, index) => `<li class="${item.done ? "complete" : index === items.findIndex((entry) => !entry.done) ? "active" : ""}"><span></span>${escapeHTML(item.label)}</li>`).join("");
+    return;
+  }
+  const targets = scenarioTargetsForStage(state.activeScreen);
   const values = state.screenValues[state.activeScreen] || {};
   const items = [
     { label: `Confirm ${workflow.find((item) => item.id === state.activeScreen)?.label.toLowerCase()} facts`, done: state.disclosedFacts.size > 0 },
@@ -1178,7 +1309,7 @@ function expectedTargetValue(target) {
 }
 
 function systemTarget(targetId) {
-  return demoTargetMap[state.activeScreen]?.find((target) => target.target_id === targetId);
+  return scenarioTargetsForStage(state.activeScreen).find((target) => target.target_id === targetId);
 }
 
 function renderSystemControl(targetId, label, helper = "") {
@@ -1232,7 +1363,15 @@ function renderContactSequenceSummary(sequence = getScenario().contactSequence |
   const answering = sequence.contacts.find((contact) => contact.contact_id === sequence.answering_contact_id) || sequence.contacts[0];
   const intended = sequence.contacts.find((contact) => contact.contact_id === sequence.intended_contact_id) || answering;
   const screened = sequence.mode === "screened" && answering.contact_id !== intended.contact_id;
-  return `<section class="contact-sequence-summary" aria-label="Call participants"><header><div><span class="page-kicker">Call participants</span><h3>${screened ? "Screened call with controlled handoff" : sequence.mode === "authorized_contact" ? "Authorized contact call" : "Direct applicant call"}</h3></div><span>${screened ? "2 sequential callers" : "1 caller"}</span></header><div class="contact-sequence-flow"><article><span class="profile-avatar">${escapeHTML(answering.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2))}</span><div><small>Answers first</small><strong>${escapeHTML(answering.name)}</strong><em>${escapeHTML(answering.role.replaceAll("_", " "))} · ${escapeHTML(answering.greeting || "Hello?")}</em></div></article>${screened ? `<span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span><article><span class="profile-avatar">${escapeHTML(intended.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2))}</span><div><small>Intended contact</small><strong>${escapeHTML(intended.name)}</strong><em>${escapeHTML(sequence.intended_contact_availability.replaceAll("_", " "))}</em></div></article>` : ""}</div></section>`;
+  const handoffAvailable = screened && sequence.intended_contact_availability === "available_handoff";
+  const title = !screened
+    ? sequence.mode === "authorized_contact" ? "Authorized contact call" : "Direct applicant call"
+    : handoffAvailable ? "Alternate answerer, then live handoff" : "Applicant unavailable — callback handling";
+  const routeLabel = !screened ? "1 caller" : handoffAvailable ? "2 sequential callers" : "1 answerer · no handoff";
+  const terminalLabel = handoffAvailable
+    ? "Available for handoff"
+    : sequence.callback_window ? `Unavailable · ${sequence.callback_window}` : sequence.intended_contact_availability.replaceAll("_", " ");
+  return `<section class="contact-sequence-summary" aria-label="Call participants"><header><div><span class="page-kicker">Call participants</span><h3>${escapeHTML(title)}</h3></div><span>${escapeHTML(routeLabel)}</span></header><div class="contact-sequence-flow"><article><span class="profile-avatar">${escapeHTML(answering.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2))}</span><div><small>Answers first</small><strong>${escapeHTML(answering.name)}</strong><em>${escapeHTML(answering.role.replaceAll("_", " "))} · ${escapeHTML(answering.greeting || "Hello?")}</em></div></article>${screened ? `<span class="material-symbols-rounded" aria-hidden="true">${handoffAvailable ? "arrow_forward" : "phone_callback"}</span><article><span class="profile-avatar">${escapeHTML(intended.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2))}</span><div><small>${handoffAvailable ? "Takes the phone" : "Intended contact"}</small><strong>${escapeHTML(intended.name)}</strong><em>${escapeHTML(terminalLabel)}</em></div></article>` : ""}</div></section>`;
 }
 
 const humePhaseLabels = {
@@ -1436,10 +1575,15 @@ function renderWorkflow() {
 function renderPrompts() {
   const scenario = getScenario();
   const liveHume = ["connected", "connecting"].includes(state.humeSession.status);
-  dom.promptGrid.innerHTML = scenario.facts
-    .map((fact) => `<button class="prompt-button ${state.disclosedFacts.has(fact.id) ? "revealed" : ""}" data-fact="${fact.id}" ${liveHume ? 'aria-label="Suggested topic to ask aloud"' : ""}>${escapeHTML(state.mode === "practice" ? `${liveHume ? "Ask aloud: " : ""}${fact.question}` : `Ask about ${fact.label.toLowerCase()}`)}</button>`)
+  const interviewFacts = scenario.interviewFacts?.length ? scenario.interviewFacts : scenario.facts;
+  dom.promptGrid.innerHTML = interviewFacts
+    .map((fact) => {
+      const question = fact.learner_question_examples?.[0] || fact.question || `Can you tell me about ${String(fact.topic || fact.label).toLowerCase()}?`;
+      const label = fact.label || fact.topic || "this fact";
+      return `<button class="prompt-button ${state.disclosedFacts.has(fact.fact_id || fact.id) ? "revealed" : ""}" data-fact="${fact.fact_id || fact.id}" ${liveHume ? 'aria-label="Suggested topic to ask aloud"' : ""}>${escapeHTML(state.mode === "practice" ? `${liveHume ? "Ask aloud: " : ""}${question}` : `Ask about ${label.toLowerCase()}`)}</button>`;
+    })
     .join("");
-  dom.factsRevealed.textContent = `${state.disclosedFacts.size + 1} / ${scenario.facts.length + 1} facts`;
+  dom.factsRevealed.textContent = `${Math.min(interviewFacts.length, state.disclosedFacts.size)} / ${interviewFacts.length} interview facts`;
 
   dom.promptGrid.querySelectorAll("[data-fact]").forEach((button) => {
     button.addEventListener("click", () => liveHume ? showToast("Ask the caller aloud", "Hume will request server authorization before the active contact discloses a material fact.", "•") : discloseFact(button.dataset.fact));
@@ -1447,22 +1591,43 @@ function renderPrompts() {
 }
 
 function discloseFact(factId) {
-  const fact = getScenario().facts.find((item) => item.id === factId);
+  const scenario = getScenario();
+  const fact = scenario.interviewFacts?.find((item) => item.fact_id === factId)
+    || scenario.facts.find((item) => item.id === factId);
   if (!fact) return;
+  const response = fact.natural_response || fact.authorized_response || fact.caption;
+  const label = fact.label || fact.topic;
   const wasNew = !state.disclosedFacts.has(factId);
   state.disclosedFacts.add(factId);
   dom.clientCaption.classList.add("transitioning");
   window.setTimeout(() => {
-    dom.clientCaption.textContent = fact.caption;
-    dom.disclosureLabel.textContent = fact.label;
+    dom.clientCaption.textContent = response;
+    dom.disclosureLabel.textContent = label;
     dom.disclosureTime.textContent = formatTime(state.elapsed);
     dom.clientCaption.classList.remove("transitioning");
   }, 120);
   if (wasNew) {
-    addVoiceTurn("client", fact.caption, [fact.id]);
-    if (state.humeSession.status === "guided") speakGuidedCaller(fact.caption);
+    addVoiceTurn("client", response, [fact.fact_id || fact.id]);
+    if (state.humeSession.status === "guided") speakGuidedCaller(response);
     transitionCallerAffect("deescalate", `appropriate_${fact.id}_question`);
-    addEvent("voice", `Client disclosed: ${fact.label}`, { target: `fact:${fact.id}`, after: fact.caption, citation: `${NOTEBOOK_ID} · frozen persona facts` });
+    addEvent("voice", `Client disclosed: ${label}`, { target: `fact:${fact.fact_id || fact.id}`, after: response, citation: `${NOTEBOOK_ID} · authored interview facts` });
+    if (fact.case_path) {
+      const factEvent = {
+        conversation_fact_event_id: `conversation-fact:${Date.now()}-${state.conversationFactEvents.length + 1}`,
+        fact_id: fact.fact_id || fact.id,
+        contact_id: state.humeSession.activeContactId,
+        case_path: fact.case_path,
+        label,
+        normalized_value: fact.normalized_value,
+        display_value: fact.normalized_value,
+        provenance: fact.provenance || "Caller statement",
+        destination_stage: fact.destination_stage || "",
+        destination_section: fact.destination_section || "",
+        disclosed_at: new Date().toISOString(),
+      };
+      state.conversationFactEvents.unshift(factEvent);
+      window.setTimeout(() => focusConversationFactDestination(factEvent), 100);
+    }
   }
   renderPrompts();
   renderCoachGuidance();
@@ -1500,7 +1665,7 @@ function renderHouseholdScreen() {
           <select id="relationship"><option value="">Select relationship</option>${["Self", "Spouse", "Child", "Other adult"].map((value) => `<option ${state.form.relationship === value ? "selected" : ""}>${value}</option>`).join("")}</select>
           ${revealValidation ? `<div class="field-message ${relationshipError ? "" : "valid"}">${relationshipError ? "Incorrect — the primary applicant must be recorded as Self." : "Correct — relationship matches the case facts."}</div>` : `<div class="field-provenance"><span class="material-symbols-rounded" aria-hidden="true">${startingState.prefilled_fields.relationship.value ? "history" : "forum"}</span>${startingState.prefilled_fields.relationship.verification_status}</div>`}
         </div>
-        <div class="form-field"><div class="field-heading"><label for="dateOfBirth">Date of birth</label><span class="provenance-badge application">${escapeHTML(startingState.prefilled_fields.dateOfBirth.provenance)}</span></div><input id="dateOfBirth" type="text" value="09/14/1993" readonly /><div class="field-provenance"><span class="material-symbols-rounded" aria-hidden="true">lock</span>Read-only submitted value</div></div>
+        <div class="form-field"><div class="field-heading"><label for="dateOfBirth">Date of birth</label><span class="provenance-badge application">${escapeHTML(startingState.prefilled_fields.dateOfBirth.provenance)}</span></div><input id="dateOfBirth" type="text" value="${escapeHTML(startingState.prefilled_fields.dateOfBirth.value)}" readonly /><div class="field-provenance"><span class="material-symbols-rounded" aria-hidden="true">lock</span>Read-only submitted value</div></div>
         <div class="form-field ${incomeError ? "invalid" : revealValidation ? "valid" : ""}">
           <div class="field-heading"><label for="monthlyIncome">Gross monthly earned income</label><span class="provenance-badge document">${escapeHTML(startingState.prefilled_fields.income.provenance)}</span></div>
           <input id="monthlyIncome" inputmode="decimal" placeholder="$0" value="${escapeHTML(state.form.income)}" aria-describedby="incomeHelp" />
@@ -1617,6 +1782,8 @@ function buildApplicantCaseView(scenario = getScenario()) {
       interpreterNeeded: application.interpreterNeeded,
       accessibilityNeed: application.accessibilityNeed,
       contactMethod: application.contactMethod,
+      phoneContactName: application.phoneContactName,
+      phoneContactRelationship: application.phoneContactRelationship,
       phone: application.phone,
       email: application.email,
       bestContactTime: application.bestContactTime,
@@ -1677,13 +1844,13 @@ function buildDemoCallerBriefDefinition(scenario, caseDraft = scenario?.integrat
   const caseScenario = { ...scenario, integratedCase: caseDraft || scenario?.integratedCase };
   const application = buildApplicantCaseView(caseScenario);
   const candidateGroups = [
-    { limit: 5, paths: [["application.type", "Application type"], ["application.receivedDate", "Application received date"], ["application.preferredLanguage", "Preferred language"], ["application.contactMethod", "Preferred contact method"], ["application.urgentNeed", "Urgent need"]] },
-    { limit: 7, paths: [["people.0.name", "Primary applicant"], ["people.0.dateOfBirth", "Primary applicant date of birth"], ["people.0.relationship", "Primary applicant relationship"], ["people.1.name", "Second household member"], ["people.1.relationship", "Second household member relationship"], ["people.2.name", "Third household member"], ["people.2.relationship", "Third household member relationship"]] },
+    { limit: 2, paths: [["application.type", "Application type"], ["application.receivedDate", "Application received date"], ["application.preferredLanguage", "Preferred language"], ["application.contactMethod", "Preferred contact method"], ["application.urgentNeed", "Urgent need"]] },
+    { limit: 6, paths: [["people.0.name", "Primary applicant"], ["people.0.dateOfBirth", "Primary applicant date of birth"], ["people.1.name", "Second household member"], ["people.1.relationship", "Second household member relationship"], ["people.2.name", "Third household member"], ["people.2.relationship", "Third household member relationship"], ["people.0.relationship", "Primary applicant relationship"]] },
     { limit: 3, paths: [["programRequests.Medicaid.requestStatus", "Medicaid request"], ["programRequests.SNAP.requestStatus", "SNAP request"], ["programRequests.TANF.requestStatus", "TANF request"]] },
-    { limit: 5, paths: [["incomeSources.0.person", "Income owner"], ["incomeSources.0.employer", "Employer"], ["incomeSources.0.grossAmount", "Gross income"], ["incomeSources.0.frequency", "Income frequency"], ["incomeSources.0.hours", "Work hours"]] },
-    { limit: 4, paths: [["expenses.shelter.type", "Shelter type"], ["expenses.shelter.amount", "Shelter amount"], ["expenses.utilitiesStatus", "Utilities status"], ["expenses.dependentCare.0.amount", "Dependent-care amount"], ["expenses.medical.0.amount", "Medical-expense amount"]] },
-    { limit: 3, paths: [["resources.1.vehicleDescription", "Vehicle"], ["resources.1.type", "Additional resource type"], ["resources.1.value", "Additional resource value"], ["resources.0.type", "Resource type"], ["resources.0.value", "Resource value"], ["resourcesStatus", "Resources status"]] },
-    { limit: 5, paths: [["nonfinancial.residency", "Residency"], ["nonfinancial.citizenship", "Citizenship or immigration status"], ["nonfinancial.disabilityClaimed", "Disability status"], ["nonfinancial.pregnancyStatus", "Pregnancy status"], ["nonfinancial.healthCoverage", "Other health coverage"], ["nonfinancial.workParticipation", "TANF work participation"], ["nonfinancial.caretakerStatus", "Caretaker status"]] },
+    { limit: 1, paths: [["incomeSources.0.person", "Income owner"], ["incomeSources.0.employer", "Employer"], ["incomeSources.0.grossAmount", "Gross income"], ["incomeSources.0.frequency", "Income frequency"], ["incomeSources.0.hours", "Work hours"]] },
+    { limit: 0, paths: [["expenses.shelter.type", "Shelter type"], ["expenses.shelter.amount", "Shelter amount"], ["expenses.utilitiesStatus", "Utilities status"], ["expenses.dependentCare.0.amount", "Dependent-care amount"], ["expenses.medical.0.amount", "Medical-expense amount"]] },
+    { limit: 0, paths: [["resources.1.vehicleDescription", "Vehicle"], ["resources.1.type", "Additional resource type"], ["resources.1.value", "Additional resource value"], ["resources.0.type", "Resource type"], ["resources.0.value", "Resource value"], ["resourcesStatus", "Resources status"]] },
+    { limit: 1, paths: [["nonfinancial.residency", "Residency"], ["nonfinancial.citizenship", "Citizenship or immigration status"], ["nonfinancial.disabilityClaimed", "Disability status"], ["nonfinancial.pregnancyStatus", "Pregnancy status"], ["nonfinancial.healthCoverage", "Other health coverage"], ["nonfinancial.workParticipation", "TANF work participation"], ["nonfinancial.caretakerStatus", "Caretaker status"]] },
   ];
   const factPaths = candidateGroups.flatMap((group) => group.paths.filter(([path]) => callerBriefHasValue(callerBriefValueAtPath(application, path))).slice(0, group.limit)).map(([case_path, topic]) => ({ fact_id: `brief:${case_path}`, case_path, topic }));
   return {
@@ -1691,10 +1858,11 @@ function buildDemoCallerBriefDefinition(scenario, caseDraft = scenario?.integrat
     scenario_id: scenario.id,
     summary: `${scenario.persona.name} is the ${scenario.persona.description.toLowerCase()} for a ${scenario.type.toLowerCase()} requesting ${scenario.programs.join(", ")}. ${scenario.description}`,
     fact_paths: factPaths,
-    correction_ids: (scenario.facts || []).map((fact) => fact.id),
+    interview_fact_ids: (scenario.truthLedger || []).filter((fact) => ["interview_only", "conversation_topic"].includes(fact.fact_state)).map((fact) => fact.fact_id),
+    correction_ids: (scenario.truthLedger || []).filter((fact) => ["correction", "disputed"].includes(fact.fact_state)).map((fact) => fact.fact_id),
     known_unknowns: [
-      { topic: "Information not included in the submitted application", response: "I do not remember that, or it was not included in my application." },
-      { topic: "Exact document submission time", response: "I do not remember the exact time the document was submitted." },
+      { topic: "An exact detail the caller genuinely does not know", response: "I’m not sure of the exact detail. I would need to check and get back to you." },
+      { topic: "Exact document submission time", response: "I don’t remember the exact time I submitted it." },
     ],
     improvisation_boundary: {
       allowed: ["Natural wording and pacing", "Hesitation and emotional reactions", "Small talk", "Requests for clarification", "Saying information is not remembered"],
@@ -1716,14 +1884,20 @@ function buildDemoCallerBriefPreview(scenario, caseDraft = scenario?.integratedC
     if (!callerBriefHasValue(value)) errors.push(`Missing case path: ${item.case_path}`);
     return { fact_id: item.fact_id, case_path: item.case_path, topic: item.topic, value: callerBriefDisplayValue(value), status: "submitted", provenance: "Submitted application" };
   }).filter((fact) => fact.value);
-  const correctionMap = new Map((scenario.facts || []).map((fact) => [fact.id, fact]));
+  const correctionMap = new Map((scenario.truthLedger || []).map((fact) => [fact.fact_id, fact]));
   const correctionPaths = { household: "people", income: "incomeSources", pregnancy: "nonfinancial.pregnancyStatus", expenses: "expenses" };
-  const gatedFacts = definition.correction_ids.map((factId) => {
+  const authoredInterviewFacts = (definition.interview_fact_ids || []).map((factId) => {
     const fact = correctionMap.get(factId);
-    if (!fact?.label || !fact?.caption || !fact?.question) errors.push(`Incomplete authored correction: ${factId}`);
+    if (!fact?.label || !fact?.natural_response || !fact?.learner_question_examples?.length) errors.push(`Incomplete authored interview fact: ${factId}`);
     const casePath = fact?.case_path || correctionPaths[factId] || "";
-    if (!casePath || !callerBriefHasValue(callerBriefValueAtPath(application, casePath))) errors.push(`Correction has no submitted value: ${factId}`);
-    return fact ? { fact_id: factId, case_path: casePath, topic: fact.label, status: fact.status || "corrected", disclosure: "request_case_response" } : null;
+    if (!casePath) errors.push(`Interview fact has no destination: ${factId}`);
+    if (["correction", "disputed"].includes(fact?.fact_state) && !callerBriefHasValue(callerBriefValueAtPath(application, casePath))) errors.push(`Correction has no submitted value: ${factId}`);
+    return fact ? { fact_id: factId, case_path: casePath, topic: fact.label, value: fact.normalized_value, response: fact.natural_response } : null;
+  }).filter(Boolean);
+  const gatedFacts = (definition.correction_ids || []).map((factId) => {
+    const fact = correctionMap.get(factId);
+    const casePath = fact?.case_path || correctionPaths[factId] || "";
+    return fact ? { fact_id: factId, case_path: casePath, topic: fact.label, status: fact.fact_state || "corrected", disclosure: "request_case_response" } : null;
   }).filter(Boolean);
   const brief = {
     version: definition.version,
@@ -1731,16 +1905,17 @@ function buildDemoCallerBriefPreview(scenario, caseDraft = scenario?.integratedC
     summary: definition.summary,
     caller: { contact_id: active.contact_id || "", name: active.name || "", role: active.role || "", greeting: active.greeting || "Hello?", language: active.preferred_language || "English", behavior: active.profile_id || "" },
     facts,
+    interview_facts: authoredInterviewFacts,
     known_unknowns: definition.known_unknowns,
     gated_facts: gatedFacts,
     improvisation_boundary: definition.improvisation_boundary,
-    missing_fact_response: "That was not provided in my application, or I do not remember it. Please do not assume a value.",
+    missing_fact_response: "I’m not sure of that detail. I would need to check before giving you an answer.",
   };
   const sizeBytes = new TextEncoder().encode(JSON.stringify(brief)).length;
   if (!brief.caller.contact_id || !brief.caller.name) errors.push("Caller identity and contact ID are required.");
   if (!facts.length) errors.push("At least one submitted fact is required.");
   if (sizeBytes > DEMO_CALLER_BRIEF_MAX_BYTES) errors.push(`Caller brief exceeds ${DEMO_CALLER_BRIEF_MAX_BYTES} bytes.`);
-  return { definition, caller_brief: brief, validation: { valid: !errors.length, errors, size_bytes: sizeBytes, fact_count: facts.length, gated_fact_count: gatedFacts.length, excluded_sections: ["evidence", "authoredOutcomes", "notices", "authorization", "scoring", "coaching"] } };
+  return { definition, caller_brief: brief, validation: { valid: !errors.length, errors, size_bytes: sizeBytes, fact_count: facts.length, gated_fact_count: gatedFacts.length, interview_fact_count: authoredInterviewFacts.length, excluded_sections: ["evidence", "authoredOutcomes", "notices", "authorization", "scoring", "coaching"] } };
 }
 
 function flattenApplicantFacts(value, sequence, path = "", facts = []) {
@@ -1777,10 +1952,33 @@ function buildApplicationContextEnvelope(scenario = getScenario()) {
   const sequence = BenefitConnectIntegrated.clone(scenario.contactSequence || createDefaultContactSequence(scenario));
   const applicantCaseView = buildApplicantCaseView(scenario);
   const facts = flattenApplicantFacts(applicantCaseView, sequence);
-  const factPathById = { household: "people", income: "incomeSources", pregnancy: "nonfinancial.pregnancyStatus", expenses: "expenses" };
   const fullAccessContacts = sequence.contacts.filter((contact) => ["full", "authorized"].includes(contact.disclosure_authority)).map((contact) => contact.contact_id);
+  const ledger = scenario.truthLedger || [];
+  const interviewFacts = ledger.filter((fact) => ["interview_only", "conversation_topic"].includes(fact.fact_state)).map((fact) => ({
+    fact_id: fact.fact_id,
+    case_path: fact.case_path,
+    topic: fact.label,
+    applicant_value: fact.normalized_value,
+    normalized_value: fact.normalized_value,
+    authorized_response: fact.natural_response,
+    status: fact.fact_state,
+    provenance: fact.provenance || "Caller statement",
+    destination_stage: fact.destination_stage,
+    destination_section: fact.destination_section,
+    allowed_contact_ids: fact.known_by_contact_ids?.length ? fact.known_by_contact_ids : fullAccessContacts,
+  }));
+  const corrections = ledger.filter((fact) => ["correction", "disputed"].includes(fact.fact_state)).map((fact) => ({
+    fact_id: fact.fact_id,
+    case_path: fact.case_path,
+    topic: fact.label,
+    applicant_value: fact.normalized_value,
+    normalized_value: fact.normalized_value,
+    authorized_response: fact.natural_response,
+    status: fact.fact_state,
+    allowed_contact_ids: fact.known_by_contact_ids?.length ? fact.known_by_contact_ids : fullAccessContacts,
+  }));
   return {
-    schema_version: "hume-application-context-v2",
+    schema_version: "hume-application-context-v3",
     case_type: scenario.type,
     programs: [...scenario.programs],
     submitted_facts: {
@@ -1790,9 +1988,10 @@ function buildApplicationContextEnvelope(scenario = getScenario()) {
     },
     applicant_case_view: applicantCaseView,
     facts,
-    private_corrections: scenario.facts.map((fact) => ({ fact_id: fact.id, case_path: fact.case_path || factPathById[fact.id] || "", topic: fact.label, authorized_response: fact.caption.replaceAll("“", "").replaceAll("”", ""), status: fact.status || "corrected", allowed_contact_ids: fact.allowed_contact_ids || fullAccessContacts })),
-    missing_facts: scenario.facts.map((fact) => ({ fact_id: fact.id, topic: fact.label, appropriate_question: fact.question })),
-    disclosure_rules: scenario.facts.map((fact) => ({ fact_id: fact.id, disclose_only_after: `The learner asks an appropriate question about ${fact.label.toLowerCase()}.` })),
+    interview_facts: interviewFacts,
+    private_corrections: corrections,
+    missing_facts: ledger.map((fact) => ({ fact_id: fact.fact_id, topic: fact.label, case_path: fact.case_path, appropriate_question: fact.learner_question_examples?.[0] || `Ask about ${fact.label.toLowerCase()}.` })),
+    disclosure_rules: ledger.map((fact) => ({ fact_id: fact.fact_id, disclose_only_after: `The learner asks an appropriate question about ${fact.label.toLowerCase()}.` })),
     call_objectives: ["Establish the purpose of the call", "Clarify submitted, missing, or changed application facts", "Respond only as the active contact", "Finish the eligibility interview naturally"],
   };
 }
@@ -1845,7 +2044,7 @@ function prepareContactSequenceForCall(scenario = getScenario()) {
   const sequence = BenefitConnectIntegrated.clone(scenario.contactSequence || createDefaultContactSequence(scenario));
   const activeId = sequence.answering_contact_id || sequence.intended_contact_id;
   const active = sequence.contacts.find((contact) => contact.contact_id === activeId) || sequence.contacts[0];
-  if (active) {
+  if (active && !sequence.route_locked) {
     const selectedVoice = getCallerVoice();
     active.profile_id = state.selectedCallerProfileId;
     active.intensity = state.selectedCallerIntensity;
@@ -1988,11 +2187,12 @@ function speakGuidedCaller(text) {
 }
 
 function renderCallerProfilePicker() {
-  const profileLocked = state.mode === "assessment";
+  const authoredRouteLocked = Boolean(getScenario().contactSequence?.route_locked);
+  const profileLocked = state.mode === "assessment" || authoredRouteLocked;
   const assignment = scenarioCallerAssignments[getScenario().id] || {};
   const activeContact = activeSimulationContact(getScenario().contactSequence || createDefaultContactSequence(getScenario()));
   return `<section class="caller-profile-picker compact-call-config">
-    <header class="compact-config-heading"><div><span class="page-kicker">Applicant settings</span><h3>Voice and behavior</h3><p>Choose how the applicant enters the conversation. The case facts remain unchanged.</p></div><span class="profile-assignment">${profileLocked ? "Assigned" : "Practice can override"}</span></header>
+    <header class="compact-config-heading"><div><span class="page-kicker">Applicant settings</span><h3>Voice and behavior</h3><p>${authoredRouteLocked ? "This demo route assigns each contact’s opening voice and behavior. Hume adapts naturally after the call begins." : "Choose how the applicant enters the conversation. The case facts remain unchanged."}</p></div><span class="profile-assignment">${profileLocked ? "Scenario assigned" : "Practice can override"}</span></header>
     <div class="compact-config-grid">
       <section class="config-selector-block"><div class="config-selector-label"><span class="config-icon material-symbols-rounded">mood</span><div><small>Caller behavior</small><strong>${escapeHTML(getCallerProfile().label)}</strong></div><span class="single-selection-badge">One profile</span></div><label><span>Opening behavior</span><select id="callerProfileSelect" ${profileLocked ? "disabled" : ""}><optgroup label="Realistic public-benefits callers">${callerProfiles.filter((profile) => profile.category === "human-services").map((profile) => `<option value="${profile.profile_id}" ${profile.profile_id === state.selectedCallerProfileId ? "selected" : ""}>${escapeHTML(profile.label)} — ${escapeHTML(profile.cooperation_style.replaceAll("-", " "))}</option>`).join("")}</optgroup><optgroup label="Vocal expression styles (advanced)">${callerProfiles.filter((profile) => profile.category === "all-expressions").map((profile) => `<option value="${profile.profile_id}" ${profile.profile_id === state.selectedCallerProfileId ? "selected" : ""}>${escapeHTML(profile.label)}</option>`).join("")}</optgroup></select></label><fieldset class="intensity-control" ${profileLocked ? "disabled" : ""}><legend>Intensity</legend>${Object.entries(callerIntensity).map(([key, item]) => `<label><input type="radio" name="callerIntensity" value="${key}" ${state.selectedCallerIntensity === key ? "checked" : ""}/><span>${item.label}</span></label>`).join("")}</fieldset><p>${escapeHTML(getCallerProfile().prompt_instructions)}</p><details class="behavior-help"><summary>What are these options?</summary><p><strong>Realistic callers</strong> combine tone, cooperation and disclosure resistance for benefits interviews. <strong>Vocal styles</strong> emphasize one expressive direction. Select one opening profile; the caller can escalate or de-escalate as the conversation develops.</p></details></section>
       <section class="config-selector-block"><div class="config-selector-label"><span class="config-icon material-symbols-rounded">record_voice_over</span><div><small>${escapeHTML(activeContact?.name || "Answering contact")} voice</small><strong>${escapeHTML(getCallerVoice().label)}</strong></div><span class="real-voice-badge"><i></i>Hume</span></div><label><span>Voice library</span><select id="callerVoiceSelect" ${profileLocked ? "disabled" : ""}>${["Female", "Male"].map((presentation) => `<optgroup label="${presentation} voices">${callerVoices.filter((voice) => voice.presentation === presentation).map((voice) => `<option value="${voice.voice_key}" ${voice.voice_key === state.selectedCallerVoiceKey ? "selected" : ""}>${escapeHTML(voice.label)} — ${escapeHTML(voice.language)}, ${escapeHTML(voice.accent)}</option>`).join("")}</optgroup>`).join("")}</select></label><div class="selected-voice-meta"><span>${escapeHTML(getCallerVoice().presentation)}</span><span>${escapeHTML(getCallerVoice().language)}</span><span>${escapeHTML(getCallerVoice().accent)}</span><span>${getCallerVoice().voice_key === assignment.default_voice_key ? "Authored match" : "Override"}</span></div><button type="button" class="button button-secondary voice-preview-button" data-voice-preview="${getCallerVoice().voice_id}"><span class="material-symbols-rounded">play_arrow</span>Play real voice preview</button></section>
@@ -2153,7 +2353,7 @@ function bindScreenFields() {
     addEvent("system", `${label} opened`, { target: `utility:${button.dataset.systemUtility}`, sequenceStatus: "worker_action" });
   }));
   document.querySelectorAll("[data-target-id]").forEach((control) => {
-    const target = demoTargetMap[state.activeScreen]?.find((item) => item.target_id === control.dataset.targetId);
+    const target = scenarioTargetsForStage(state.activeScreen).find((item) => item.target_id === control.dataset.targetId);
     if (!target) return;
     const input = control.matches("label") ? control.querySelector("input") : control;
     if (!["button", "checkbox", "select"].includes(target.control_type)) {
@@ -2274,8 +2474,77 @@ function interviewCriterion(id, label, weight, ratio, evidence, recommendedAlter
   return { observation_id: `interview:${id}`, criterion: id, label, weight, score, observable_behavior: evidence, recommended_alternative: recommendedAlternative, event_ids: [], transcript_range: null, hume_evidence: state.affectObservations.slice(-3), citation: id === "closure" ? "USDA SNAP Interview Toolkit · Concluding interviews" : "USDA SNAP Interview Toolkit · Conducting interviews" };
 }
 
+function evaluateUnavailableContactCall(route) {
+  const chronologicalTurns = [...state.voiceTurns].reverse();
+  const learnerTurns = chronologicalTurns.filter((turn) => turn.speaker === "learner");
+  const learnerText = learnerTurns.map((turn) => turn.transcript).join(" ");
+  const neutralMessageRequired = route.message_policy === "neutral_callback_only";
+  const checks = [
+    { id: "contact_request", label: "Requested the intended contact without disclosing case details", correct: state.handoffAttempted, weight: 20 },
+    { id: "privacy", label: "Protected application and program information", correct: state.callbackDisposition !== "oversharing_blocked", weight: 15 },
+    { id: "callback", label: neutralMessageRequired ? "Left an approved neutral callback message" : "Used the authored callback window without leaving a message", correct: neutralMessageRequired ? state.callbackDisposition === "callback_message_recorded" : state.handoffAttempted && state.callbackDisposition !== "oversharing_blocked", weight: 15 },
+    { id: "disposition", label: "Recorded the correct unavailable-contact disposition", correct: state.callEnded, weight: 10 },
+  ];
+  const fieldEvaluations = checks.map((check) => ({
+    field_evaluation_id: `field-eval:contact:${check.id}`,
+    stage: "intake",
+    target: check.id,
+    label: check.label,
+    entered_value: check.correct ? "Complete" : "Not completed",
+    expected_value: "Complete",
+    provenance: "Authored call route",
+    correctness: check.correct,
+    issue_type: check.correct ? null : "call_disposition",
+    critical_error: check.id === "privacy" && !check.correct ? "protected_information_overshared" : null,
+    explanation: check.correct ? "The call event record matches the authored unavailable-contact route." : "The expected unavailable-contact behavior was not observed.",
+    reconstruction: check.label,
+    screenshot_id: null,
+    annotation_bounds: null,
+    transcript_turn_id: null,
+    citation: `${SPEC_NOTE_ID} · Contact privacy and callback route`,
+    accepted_alternatives: [],
+    unvisited: false,
+  }));
+  const processingCriteria = checks.map((check) => weightedCriterion(check.id, check.label, check.weight, [fieldEvaluations.find((item) => item.target === check.id)]));
+  const firstTurn = learnerTurns[0]?.transcript || "";
+  const openingRatio = learnerTurns.length ? ([/hello|good (morning|afternoon)/i, /my name|this is|calling from/i, /speak with|available/i].filter((pattern) => pattern.test(firstTurn)).length / 3) : 0;
+  const privacyRatio = state.callbackDisposition === "oversharing_blocked" || /SNAP|TANF|Medicaid|application|eligibility|verification/i.test(learnerText) && !state.handoffCompleted ? 0 : 1;
+  const empathyRatio = learnerTurns.length ? Math.min(1, learnerTurns.filter((turn) => /thank|understand|appreciate|no problem/i.test(turn.transcript)).length / Math.max(1, Math.ceil(learnerTurns.length / 2))) : 0;
+  const closureRatio = state.callEnded ? 1 : 0;
+  const interviewObservations = [
+    interviewCriterion("opening", "Professional introduction and intended-contact request", 12, openingRatio, learnerTurns.length ? "The first worker turn was reviewed for introduction and contact request." : "No worker opening was retained.", "Give your name and agency, then ask for the intended person without describing the case."),
+    interviewCriterion("confidentiality", "Confidentiality with an alternate answerer", 12, privacyRatio, state.callbackDisposition === "oversharing_blocked" ? "The server blocked a callback message containing protected case context." : "No protected case disclosure was recorded.", "Use only your name, agency, callback number, and a request to return the call."),
+    interviewCriterion("empathy", "Respectful alternate-contact communication", 8, empathyRatio, `${learnerTurns.length} worker turns were available for review.`, "Acknowledge the answer, thank the contact, and keep the exchange brief."),
+    interviewCriterion("closure", "Clear callback and call closure", 8, closureRatio, state.callEnded ? "The unavailable-contact call was ended intentionally." : "The call was not closed.", "Repeat the callback plan once, thank the answerer, and end the call."),
+  ];
+  const processingScore = Math.round(processingCriteria.reduce((sum, item) => sum + item.score, 0) * 10) / 10;
+  const interviewScore = Math.round(interviewObservations.reduce((sum, item) => sum + item.score, 0) * 10) / 10;
+  const criticalErrors = fieldEvaluations.map((item) => item.critical_error).filter(Boolean);
+  let overallScore = Math.round((processingScore + interviewScore) * 10) / 10;
+  if (criticalErrors.length) overallScore = Math.min(69, overallScore);
+  return {
+    evaluation_id: `post-call:${Date.now()}`,
+    overall_score: overallScore,
+    processing_score: processingScore,
+    interview_score: interviewScore,
+    proficiency: overallScore >= 90 ? "Proficient" : overallScore >= 80 ? "Meets expectations" : overallScore >= 70 ? "Developing" : "Needs coaching",
+    critical_errors: criticalErrors,
+    unresolved_case_risks: fieldEvaluations.filter((item) => !item.correctness).map((item) => item.label),
+    strengths: [...processingCriteria, ...interviewObservations].filter((item) => item.score / item.weight >= 0.7).slice(0, 3).map((item) => item.label),
+    priorities: [...processingCriteria, ...interviewObservations].filter((item) => item.score / item.weight < 0.7).slice(0, 3).map((item) => item.label),
+    rubric_version: `${federalFeedbackRubric.version}:unavailable-contact-v1`,
+    processing_criteria: processingCriteria,
+    field_evaluations: fieldEvaluations,
+    interview_observations: interviewObservations,
+    passed: overallScore >= 80 && !criticalErrors.length,
+    terminal_route: route.expected_terminal_state,
+  };
+}
+
 function evaluatePostCall() {
-  const allFields = Object.entries(demoTargetMap).flatMap(([stageId, targets]) => targets.map((target) => evaluateField(stageId, target)));
+  const route = state.humeSession.contactSequence || getScenario().contactSequence;
+  if (route?.mode === "screened" && route.intended_contact_availability !== "available_handoff") return evaluateUnavailableContactCall(route);
+  const allFields = workflow.flatMap(({ id: stageId }) => scenarioTargetsForStage(stageId).map((target) => evaluateField(stageId, target)));
   const fields = (stageId) => allFields.filter((item) => item.stage === stageId);
   const processingCriteria = [
     weightedCriterion("application_review", "Application review and discrepancy resolution", 10, fields("intake")),
@@ -2290,14 +2559,15 @@ function evaluatePostCall() {
   const learnerTurns = chronologicalTurns.filter((turn) => turn.speaker === "learner");
   const learnerText = learnerTurns.map((turn) => turn.transcript).join(" ");
   const openingRatio = learnerTurns.length ? ([/hello|good (morning|afternoon)/i, /identity|name|speaking with/i, /private|confidential/i, /purpose|calling|application/i].filter((pattern) => pattern.test(learnerTurns[0]?.transcript || "")).length / 4) : 0;
-  const questionRatio = Math.min(1, state.disclosedFacts.size / Math.max(1, getScenario().facts.length));
+  const requiredInterviewFacts = (getScenario().truthLedger || getScenario().facts).filter((fact) => fact.required !== false);
+  const questionRatio = Math.min(1, requiredInterviewFacts.filter((fact) => state.disclosedFacts.has(fact.fact_id || fact.id)).length / Math.max(1, requiredInterviewFacts.length));
   const listeningRatio = learnerTurns.length ? Math.min(1, learnerTurns.filter((turn) => /confirm|understand|so you|you said|let me make sure/i.test(turn.transcript)).length / Math.max(1, Math.ceil(learnerTurns.length / 2))) : 0;
   const empathyRatio = learnerTurns.length ? Math.min(1, learnerTurns.filter((turn) => /understand|sorry|thank you|appreciate|take your time|help/i.test(turn.transcript)).length / Math.max(1, Math.ceil(learnerTurns.length / 2))) : 0;
   const plainLanguageRatio = learnerTurns.length ? (/MAGI|assistance unit|categorical eligibility|nonfinancial factor/i.test(learnerText) ? 0.45 : 1) : 0;
   const closureRatio = [state.closure.factsConfirmed, state.closure.nextSteps, state.closure.closingSummary === true || state.closure.closingSummary === "Yes", state.callEnded].filter(Boolean).length / 4;
   const interviewObservations = [
     interviewCriterion("opening", "Opening, identity, confidentiality, and purpose", 4, openingRatio, learnerTurns.length ? "Opening language was evaluated from the first learner turn." : "No observable worker opening was retained.", "Introduce yourself, verify identity, explain privacy, and state the call purpose before collecting facts."),
-    interviewCriterion("questioning", "Complete, non-leading, case-relevant questioning", 10, questionRatio, `${state.disclosedFacts.size} of ${getScenario().facts.length} gated case facts were appropriately disclosed.`, "Use open questions first, then targeted follow-ups for every material gap or discrepancy."),
+    interviewCriterion("questioning", "Complete, non-leading, case-relevant questioning", 10, questionRatio, `${requiredInterviewFacts.filter((fact) => state.disclosedFacts.has(fact.fact_id || fact.id)).length} of ${requiredInterviewFacts.length} authored interview facts were appropriately disclosed.`, "Use open questions first, then targeted follow-ups for every material gap or discrepancy."),
     interviewCriterion("listening", "Active listening, clarification, and accurate paraphrasing", 8, listeningRatio, `${learnerTurns.filter((turn) => /confirm|understand|so you|you said/i.test(turn.transcript)).length} observable confirmations or paraphrases.`, "Pause after the answer, paraphrase the material fact, and ask the applicant to confirm it."),
     interviewCriterion("empathy", "Respect, empathy, professionalism, and de-escalation", 7, empathyRatio, `${state.callerAffectTimeline.filter((entry) => String(entry.trigger).includes("deescalat") || String(entry.trigger).includes("appropriate")).length} supportive trajectory events; Hume observations are context only.`, "Acknowledge the concern in one sentence, then explain the next question in plain language."),
     interviewCriterion("plain_language", "Plain-language explanation of requirements and decisions", 6, plainLanguageRatio, learnerTurns.length ? "Worker wording was checked for unexplained eligibility jargon." : "No observable worker explanation was retained.", "Explain what is needed, why it matters, and what will happen next without program-system jargon."),
@@ -2336,7 +2606,7 @@ function evaluateForm() {
 }
 
 function validateScreen() {
-  const targets = demoTargetMap[state.activeScreen] || [];
+  const targets = scenarioTargetsForStage(state.activeScreen);
   const checks = targets.map((target) => {
     const actual = targetValue(target);
     const expected = expectedTargetValue(target);
@@ -2777,6 +3047,28 @@ function startGuidedCall() {
   showToast("Guided voice connected", "The browser is speaking the frozen applicant responses. Use the interview topics to continue the conversation.");
 }
 
+function sendHumeChatQaTurn(event) {
+  event.preventDefault();
+  const input = document.querySelector("#humeChatQaInput");
+  const status = document.querySelector("#humeChatQaStatus");
+  const text = input?.value.trim();
+  if (!text) return;
+  const socket = state.humeSession.socket;
+  if (state.humeSession.status !== "connected" || !socket || socket.readyState !== WebSocket.OPEN) {
+    status.textContent = "Start and confirm a live Hume session first.";
+    return;
+  }
+  try {
+    socket.send(JSON.stringify({ type: "user_input", text }));
+    status.textContent = "Test turn sent through the live caller session.";
+    input.value = "";
+    markHumeActivity();
+    addEvent("system", "Hume text QA turn sent", { target: "hume:text-qa", after: "sent", sequenceStatus: "developer_test", citation: `${NOTEBOOK_ID} · active caller context` });
+  } catch (error) {
+    status.textContent = `Test turn failed: ${error.message}`;
+  }
+}
+
 function setHumeConnectionPhase(phase) {
   state.humeSession.connectionPhase = phase;
   state.humeSession.status = phase === "connected" ? "connected" : phase === "failed" ? "failed" : "connecting";
@@ -2826,6 +3118,23 @@ function reportHumeDiagnostic(diagnostic, client) {
   }).catch(() => {});
 }
 
+function buildLiveHumeStartRequest(contactSequence = prepareContactSequenceForCall()) {
+  state.applicationContextEnvelope = buildApplicationContextEnvelope();
+  return {
+    action: "start",
+    scenario_id: getScenario().id,
+    profile_id: getCallerProfile().profile_id,
+    intensity: state.selectedCallerIntensity,
+    voice_key: getCallerVoice().voice_key,
+    voice_id: getCallerVoice().voice_id,
+    application_context: state.applicationContextEnvelope,
+    caller_brief: getScenario().callerBrief || buildDemoCallerBriefDefinition(getScenario(), getScenario().integratedCase),
+    contact_sequence: contactSequence,
+    turn_policy: HUME_TURN_POLICY,
+    scenario: { synthetic: true, name: getScenario().persona.name, case_id: getScenario().caseId },
+  };
+}
+
 async function handleLiveHumeFailure(error, client) {
   if (client && state.humeSession.client && state.humeSession.client !== client) return;
   const runtimeError = { code: error?.code || "runtime_error", phase: error?.phase || state.humeSession.connectionPhase || "failed", message: error?.message || "The live call could not continue", closeCode: Number.isInteger(error?.closeCode) ? error.closeCode : undefined };
@@ -2856,22 +3165,9 @@ async function startLiveCall() {
   state.voicePreviewAudio = null;
   state.humeSession.runtimeError = null;
   state.humeSession.firstAudioReceived = false;
-  state.applicationContextEnvelope = buildApplicationContextEnvelope();
   initializeCallerAffect("hume_session_start");
   const contactSequence = prepareContactSequenceForCall();
-  const startRequest = {
-    action: "start",
-    scenario_id: getScenario().id,
-    profile_id: getCallerProfile().profile_id,
-    intensity: state.selectedCallerIntensity,
-    voice_key: getCallerVoice().voice_key,
-    voice_id: getCallerVoice().voice_id,
-    application_context: state.applicationContextEnvelope,
-    caller_brief: getScenario().callerBrief || buildDemoCallerBriefDefinition(getScenario(), getScenario().integratedCase),
-    contact_sequence: contactSequence,
-    turn_policy: HUME_TURN_POLICY,
-    scenario: { synthetic: true, name: getScenario().persona.name, case_id: getScenario().caseId },
-  };
+  const startRequest = buildLiveHumeStartRequest(contactSequence);
   let client;
   try {
     client = new Runtime.HumeBrowserClient({
@@ -3018,6 +3314,24 @@ async function authorizeHumeCaseResponse(message) {
   state.humeSession.sessionProof = result.session_proof || state.humeSession.sessionProof;
   state.humeSession.contextRevision = Number(result.context?.context_revision || state.humeSession.contextRevision);
   (result.fact_ids || []).forEach((factId) => state.disclosedFacts.add(factId));
+  if (result.authorized && result.fact) {
+    const factEvent = {
+      conversation_fact_event_id: `conversation-fact:${Date.now()}-${state.conversationFactEvents.length + 1}`,
+      fact_id: result.fact.fact_id,
+      contact_id: state.humeSession.activeContactId,
+      case_path: result.fact.case_path,
+      label: result.fact.label,
+      normalized_value: result.fact.normalized_value,
+      display_value: result.fact.display_value,
+      provenance: result.fact.provenance || "Caller statement",
+      destination_stage: result.fact.destination_stage || "",
+      destination_section: result.fact.destination_section || "",
+      context_revision: Number(result.context?.context_revision || state.humeSession.contextRevision),
+      disclosed_at: new Date().toISOString(),
+    };
+    state.conversationFactEvents.unshift(factEvent);
+    if (state.mode === "practice" && state.guidedFollow && factEvent.case_path) window.setTimeout(() => focusConversationFactDestination(factEvent), 450);
+  }
   if (result.authorized) state.humeSession.pendingFactIds = [...new Set([...(state.humeSession.pendingFactIds || []), ...(result.fact_ids || [])])];
   sendHumeToolResponse(socket, message, result);
   addEvent("voice", result.authorized ? `Server authorized Hume disclosure: ${(result.fact_ids || []).join(", ")}` : "Server blocked out-of-scenario Hume disclosure", { target: result.authorized ? `fact:${result.fact_ids?.[0] || "authorized"}` : "fact:unauthorized", after: result.authorized, sequenceStatus: "server_authorized", citation: `${NOTEBOOK_ID} · frozen disclosure rules` });
@@ -3028,6 +3342,7 @@ async function authorizeHumeContactHandoff(message) {
   const socket = state.humeSession.socket;
   if (!socket || socket.readyState !== WebSocket.OPEN || state.humeSession.handoffInProgress) return;
   const args = humeToolArguments(message);
+  state.handoffAttempted = true;
   state.humeSession.handoffInProgress = true;
   markHumeActivity();
   state.humeSession.client?.stopPlayback();
@@ -3048,6 +3363,7 @@ async function authorizeHumeContactHandoff(message) {
     state.humeSession.sessionProof = result.session_proof;
     state.humeSession.contextRevision = Number(result.context?.context_revision || state.humeSession.contextRevision);
     state.humeSession.activeContactId = result.active_contact_id;
+    state.handoffCompleted = true;
     if (state.humeSession.contactSequence) state.humeSession.contactSequence.active_contact_id = result.active_contact_id;
     const target = result.contact || activeSimulationContact();
     if (target) {
@@ -3081,8 +3397,10 @@ async function authorizeHumeCallbackMessage(message) {
   } catch (error) {
     result = { authorized: false, response_text: "I cannot take that message right now.", error: error.message };
   }
+  state.callbackDisposition = result.authorized ? "callback_message_recorded" : result.oversharing ? "oversharing_blocked" : "message_declined";
   sendHumeToolResponse(socket, message, result);
   addEvent("voice", result.authorized ? "Callback message recorded" : result.oversharing ? "Callback message blocked for oversharing" : "Callback message declined", { target: `contact:${state.humeSession.activeContactId || "active"}`, after: result.authorized, correct: result.authorized, sequenceStatus: result.oversharing ? "privacy_boundary" : "server_authorized" });
+  renderCoachGuidance();
 }
 
 async function authorizeHumeToolCall(message) {
@@ -3186,6 +3504,10 @@ function selectScenario(index) {
   state.mockEligibility = { status: "unrun", variant: null, lastRunAt: null };
   state.openCaseSections = null;
   state.disclosedFacts = new Set();
+  state.conversationFactEvents = [];
+  state.handoffCompleted = false;
+  state.handoffAttempted = false;
+  state.callbackDisposition = null;
   state.validated = false;
   state.lastValidation = null;
   state.assessmentRecorded = false;
@@ -3810,6 +4132,9 @@ function bindStaticEvents() {
   document.querySelector("#humeConfigForm").addEventListener("submit", saveHumeConfiguration);
   document.querySelectorAll("[data-close-hume-config]").forEach((button) => button.addEventListener("click", () => document.querySelector("#humeConfigDialog").close()));
   document.querySelector("#humeConfigDialog").addEventListener("click", (event) => { if (event.target.id === "humeConfigDialog") event.target.close(); });
+  const humeChatQaPanel = document.querySelector("#humeChatQaPanel");
+  if (humeChatQaPanel && new URLSearchParams(window.location.search).get("humeChatQA") === "1") humeChatQaPanel.hidden = false;
+  document.querySelector("#humeChatQaForm")?.addEventListener("submit", sendHumeChatQaTurn);
   window.addEventListener("keydown", (event) => {
     if (event.key === "Escape") closeResponsivePanels();
   });

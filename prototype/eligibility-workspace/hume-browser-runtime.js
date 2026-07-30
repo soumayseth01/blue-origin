@@ -147,6 +147,7 @@
           get readyState() { return humeSocket.readyState; },
           sendSessionSettings(settings) { humeSocket.sendSessionSettings(normalizeSessionSettings(settings)); },
           sendAssistantInput(text) { humeSocket.sendAssistantInput({ text }); },
+          sendUserInput(text) { humeSocket.sendUserInput(text); },
           sendAudioInput(data) { humeSocket.sendAudioInput({ data }); },
           sendPauseAssistantMessage() { humeSocket.pauseAssistant(); },
           sendResumeAssistantMessage() { humeSocket.resumeAssistant(); },
@@ -155,6 +156,7 @@
             const message = typeof payload === "string" ? JSON.parse(payload) : payload;
             if (message.type === "session_settings") return this.sendSessionSettings(message);
             if (message.type === "assistant_input") return this.sendAssistantInput(message.text);
+            if (message.type === "user_input") return this.sendUserInput(message.text);
             if (message.type === "audio_input") return this.sendAudioInput(message.data);
             if (message.type === "pause_assistant_message") return this.sendPauseAssistantMessage();
             if (message.type === "resume_assistant_message") return this.sendResumeAssistantMessage();

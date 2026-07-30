@@ -1,4 +1,4 @@
-export const CALLER_BRIEF_VERSION = "demo-caller-brief-v1";
+export const CALLER_BRIEF_VERSION = "demo-caller-brief-v2";
 export const CALLER_BRIEF_MAX_BYTES = 8192;
 export const HUME_CONTEXT_MAX_BYTES = 12288;
 
@@ -61,7 +61,22 @@ export function resolveDemoCallerBrief({ definition = {}, applicationContext = {
   }
 
   const corrections = new Map((applicationContext.private_corrections || []).map((item) => [item.fact_id, item]));
+  const interviewFacts = new Map((applicationContext.interview_facts || []).map((item) => [item.fact_id, item]));
+  const authoredInterviewFacts = [];
   const gatedFacts = [];
+  for (const factId of Array.isArray(definition.interview_fact_ids) ? definition.interview_fact_ids.slice(0, 40) : []) {
+    const fact = interviewFacts.get(factId);
+    if (!fact?.case_path || !fact?.authorized_response) {
+      errors.push(`Caller interview fact is incomplete: ${text(factId, 120)}`);
+      continue;
+    }
+    const submittedValue = getPath(application, fact.case_path);
+    if (meaningful(submittedValue) && fact.status === "interview_only") {
+      errors.push(`Caller interview-only fact is already submitted: ${fact.case_path}`);
+      continue;
+    }
+    authoredInterviewFacts.push({ fact_id: text(fact.fact_id, 120), case_path: text(fact.case_path, 220), topic: text(fact.topic, 120), value: text(fact.normalized_value, 180), response: text(fact.authorized_response, 320) });
+  }
   for (const factId of Array.isArray(definition.correction_ids) ? definition.correction_ids.slice(0, 20) : []) {
     const correction = corrections.get(factId);
     if (!correction?.case_path || !correction?.authorized_response) {
@@ -84,13 +99,14 @@ export function resolveDemoCallerBrief({ definition = {}, applicationContext = {
     summary: text(definition.summary, 1000),
     caller: { contact_id: text(activeContact.contact_id, 100), name: text(activeContact.name, 120), role: text(activeContact.role, 60), greeting: text(activeContact.greeting || "Hello?", 180), language: text(activeContact.preferred_language || "English", 60), behavior: text(activeContact.profile_id, 100) },
     facts,
+    interview_facts: authoredInterviewFacts,
     known_unknowns: knownUnknowns,
     gated_facts: gatedFacts,
     improvisation_boundary: {
       allowed: (Array.isArray(boundary.allowed) ? boundary.allowed : DEFAULT_BOUNDARY.allowed).slice(0, 12).map((item) => text(item, 160)),
       prohibited: (Array.isArray(boundary.prohibited) ? boundary.prohibited : DEFAULT_BOUNDARY.prohibited).slice(0, 16).map((item) => text(item, 160)),
     },
-    missing_fact_response: "That was not provided in my application, or I do not remember it. Please do not assume a value.",
+    missing_fact_response: "I’m not sure of that detail. I would need to check before giving you an answer.",
   };
   const sizeBytes = byteSize(callerBrief);
   if (!callerBrief.caller.contact_id || !callerBrief.caller.name) errors.push("Caller identity and contact ID are required.");
@@ -105,6 +121,7 @@ export function resolveDemoCallerBrief({ definition = {}, applicationContext = {
       size_bytes: sizeBytes,
       fact_count: facts.length,
       gated_fact_count: gatedFacts.length,
+      interview_fact_count: authoredInterviewFacts.length,
       excluded_sections: ["evidence", "authoredOutcomes", "notices", "authorization", "scoring", "coaching"],
     },
   };

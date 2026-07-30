@@ -9,7 +9,7 @@
     "lighthouse:seed": "node scripts/seed-lighthouse.mjs",
     "library:import": "node scripts/import-library-documents.mjs",
     "hume:configure": "node scripts/configure-hume-natural-turns.mjs",
-    "check": "node --check app.js && node --check coach-engine.js && node --check hume-browser-runtime.js && node --check vendor-hume-evi.js && node --check artifact-studio.js && node --check eligibility-library.js && node --check integrated-case.js && node --check simulation-authoring.js && node --check scripts/configure-hume-natural-turns.mjs && find api -name '*.js' -print0 | xargs -0 -n1 node --check && node qa/coach-engine-contract.mjs && node qa/hume-session-contract.mjs && node qa/hume-config-resilience.mjs && node qa/hume-runtime-contract.mjs"
+    "check": "node --check app.js && node --check coach-engine.js && node --check demo-scenario-system.js && node --check hume-browser-runtime.js && node --check vendor-hume-evi.js && node --check artifact-studio.js && node --check eligibility-library.js && node --check integrated-case.js && node --check simulation-authoring.js && node --check scripts/configure-hume-natural-turns.mjs && find api -name '*.js' -print0 | xargs -0 -n1 node --check && node qa/demo-scenario-system-contract.mjs && node qa/coach-engine-contract.mjs && node qa/hume-session-contract.mjs && node qa/hume-config-resilience.mjs && node qa/hume-runtime-contract.mjs"
   },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.100",

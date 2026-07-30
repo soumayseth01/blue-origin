@@ -32,15 +32,17 @@ function sessionWithAvailability(availability = "available_handoff") {
       applicant_case_view: { application: { preferredLanguage: "English" }, people: [{ name: "Maya Ortiz" }], income: [{ grossAmount: "780" }] },
       facts: [{ fact_id: "fact:income", case_path: "income.0.grossAmount", topic: "Current earnings", submitted_value: "920", applicant_value: "780", status: "corrected", provenance: "Applicant interview", allowed_contact_ids: ["contact:maya"] }],
       private_corrections: [{ fact_id: "fact:income", case_path: "income.0.grossAmount", topic: "Current earnings", authorized_response: "My current gross earnings are $780.", status: "corrected", allowed_contact_ids: ["contact:maya"] }],
+      interview_facts: [{ fact_id: "fact:marital", case_path: "people.0.maritalStatus", topic: "Marital status", authorized_response: "I’m separated, and my husband does not live with us.", normalized_value: "Separated", fact_state: "interview_only", destination_stage: "household", allowed_contact_ids: ["contact:maya"] }],
     },
     caller_brief: {
-      version: "demo-caller-brief-v1",
+      version: "demo-caller-brief-v2",
       summary: "Maya submitted a combined-program application and is ready for an eligibility interview.",
       fact_paths: [
         { fact_id: "brief:language", case_path: "application.preferredLanguage", topic: "Preferred language" },
         { fact_id: "brief:name", case_path: "people.0.name", topic: "Applicant name" },
       ],
       correction_ids: ["fact:income"],
+      interview_fact_ids: ["fact:marital"],
       known_unknowns: [{ topic: "Exact document upload time", response: "I do not remember the exact time." }],
     },
     turn_policy: { end_of_turn_silence_ms: 2000, min_interruption_ms: 1200, speech_detection_threshold: 0.5, prefix_padding_ms: 300, silence_checkin_ms: 20000 },
@@ -58,12 +60,18 @@ assert.equal(humeConfigChecks({ ...naturalToolConfig, builtin_tools: [{ name: "h
 
 const initial = sessionWithAvailability();
 assert.equal(initial.context.active_contact_id, "contact:jordan");
+assert.equal(initial.voice_id, "voice-jordan", "the initial Hume voice must belong to the authored answering contact");
 assert.match(initial.system_prompt, /You are Jordan Ortiz/);
+assert.match(initial.system_prompt, /one to three sentences/i);
+assert.match(initial.system_prompt, /not in the application/i);
+assert.match(initial.system_prompt, /do not give one-word answers to exploratory questions/i);
 assert.equal(initial.turn_policy.end_of_turn_silence_ms, 2000);
 assert.equal(initial.turn_policy.min_interruption_ms, 1200);
-assert.equal(initial.caller_brief_version, "demo-caller-brief-v1");
+assert.equal(initial.caller_brief_version, "demo-caller-brief-v2");
 assert.equal(initial.caller_brief_fact_count, 2);
 assert.equal(initial.caller_brief.gated_facts.length, 1);
+assert.equal(initial.caller_brief.interview_facts.length, 1);
+assert.equal(initial.caller_brief.interview_facts[0].response, "I’m separated, and my husband does not live with us.");
 assert.ok(initial.caller_brief_size_bytes < 8192);
 assert.match(initial.caller_brief.facts.map((fact) => `${fact.topic}: ${fact.value}`).join("\n"), /Applicant name: Maya Ortiz/);
 assert.equal(JSON.stringify(initial.caller_brief).includes("evidence"), false);
@@ -73,7 +81,7 @@ assert.ok(serializedHumeClientContext.length < 12000, "turn-time Hume context mu
 assert.equal(serializedHumeClientContext.includes("applicant_case_view"), false, "the full application must stay behind the case-response tool");
 assert.equal(serializedHumeClientContext.includes('"value":"780"'), false, "gated correction values must not be dumped into Hume context");
 assert.deepEqual(humeClientContext.application_summary.programs, ["Medicaid", "SNAP", "TANF"]);
-assert.equal(humeClientContext.caller_brief.version, "demo-caller-brief-v1");
+assert.equal(humeClientContext.caller_brief.version, "demo-caller-brief-v2");
 assert.ok(Buffer.byteLength(JSON.stringify(humeClientContext), "utf8") < 12288);
 assert.ok(assertHumeContextBudget(humeClientContext, initial.system_prompt) < 12288);
 
@@ -85,7 +93,7 @@ const direct = buildAuthoritativeHumeSession({
   session_id: "session:direct",
   contact_sequence: { mode: "direct", contacts: [contacts[1]], answering_contact_id: "contact:maya", intended_contact_id: "contact:maya" },
   application_context: { case_type: "Initial application", programs: ["Medicaid", "SNAP", "TANF"], applicant_case_view: { people: [{ name: "Maya Ortiz" }] } },
-  caller_brief: { version: "demo-caller-brief-v1", summary: "Maya submitted a combined-program initial application.", fact_paths: [{ case_path: "people.0.name", topic: "Applicant name" }] },
+  caller_brief: { version: "demo-caller-brief-v2", summary: "Maya submitted a combined-program initial application.", fact_paths: [{ case_path: "people.0.name", topic: "Applicant name" }] },
 });
 assert.match(direct.system_prompt, /already speaking with the intended contact/i);
 assert.match(direct.system_prompt, /say that this is Maya/i);
@@ -112,6 +120,11 @@ const disclosed = authorizeCaseFact(handoff.session, { active_contact_id: "conta
 assert.equal(disclosed.authorized, true);
 assert.deepEqual(disclosed.fact_ids, ["fact:income"]);
 assert.equal(disclosed.session.context.context_revision, 2);
+
+const interviewDisclosure = authorizeCaseFact(handoff.session, { active_contact_id: "contact:maya", fact_id: "fact:marital", topic: "marital status" });
+assert.equal(interviewDisclosure.authorized, true);
+assert.equal(interviewDisclosure.response_text, "I’m separated, and my husband does not live with us.");
+assert.deepEqual(interviewDisclosure.fact, { fact_id: "fact:marital", case_path: "people.0.maritalStatus", label: "Marital status", normalized_value: "Separated", display_value: "Separated", provenance: "Caller statement", destination_stage: "household", destination_section: "" });
 
 const unavailable = sessionWithAvailability("not_at_location");
 const unavailableHandoff = authorizeContactHandoff(unavailable, { current_contact_id: "contact:jordan", requested_contact_id: "contact:maya" });

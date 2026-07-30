@@ -1,0 +1,108 @@
+{
+  "generated_at": "2026-07-30T19:06:46.057Z",
+  "base_url": "http://127.0.0.1:8112",
+  "browser": "Chromium headless",
+  "route_distribution": {
+    "direct": 2,
+    "successful_handoff": 2,
+    "unavailable": 2
+  },
+  "mobile": {
+    "body_width": 390,
+    "viewport_width": 390
+  },
+  "hume_text_qa_panel": true,
+  "console_errors": [],
+  "scenarios": [
+    {
+      "scenario_id": "BO-001",
+      "route_id": "route:BO-001:direct",
+      "route_mode": "direct",
+      "expected_terminal_state": "interview_complete",
+      "preflight_summary": "Call participants Direct applicant call 1 CALLER MO ANSWERS FIRST Maya Ortiz applicant · Hi, this is Maya.",
+      "initial_coach_action": "ask",
+      "initial_coach_title": "Ask about marital status",
+      "validation_passed": true,
+      "caller_brief_size_bytes": 7164,
+      "first_fact": "bo001-marital",
+      "coach_auto_focused": true,
+      "enter_destination": "people.0.maritalStatus",
+      "screenshot": "/Users/soumayseth/Documents/BlueOrigin/prototype/eligibility-workspace/qa/evidence/screenshots/bo-001-journey.png"
+    },
+    {
+      "scenario_id": "BO-002",
+      "route_id": "route:BO-002:direct",
+      "route_mode": "direct",
+      "expected_terminal_state": "interview_complete",
+      "preflight_summary": "Call participants Direct applicant call 1 CALLER AB ANSWERS FIRST Andre Bell applicant · Hi, this is Andre.",
+      "initial_coach_action": "ask",
+      "initial_coach_title": "Ask about marital status",
+      "validation_passed": true,
+      "caller_brief_size_bytes": 6207,
+      "first_fact": "bo002-marital",
+      "coach_auto_focused": true,
+      "enter_destination": "people.0.maritalStatus",
+      "screenshot": "/Users/soumayseth/Documents/BlueOrigin/prototype/eligibility-workspace/qa/evidence/screenshots/bo-002-journey.png"
+    },
+    {
+      "scenario_id": "BO-003",
+      "route_id": "route:BO-003:handoff",
+      "route_mode": "screened",
+      "expected_terminal_state": "interview_complete",
+      "preflight_summary": "Call participants Alternate answerer, then live handoff 2 SEQUENTIAL CALLERS KR ANSWERS FIRST Kendra Reed answering contact · Hello? arrow_forward DR TAKES THE PHONE Danielle Reed Available for handoff",
+      "initial_coach_action": "handoff",
+      "initial_coach_title": "Ask to speak with Danielle Reed",
+      "validation_passed": true,
+      "caller_brief_size_bytes": 4174,
+      "handoff_voice_changed": true,
+      "post_handoff_coach_action": "ask",
+      "screenshot": "/Users/soumayseth/Documents/BlueOrigin/prototype/eligibility-workspace/qa/evidence/screenshots/bo-003-journey.png"
+    },
+    {
+      "scenario_id": "BO-004",
+      "route_id": "route:BO-004:handoff",
+      "route_mode": "screened",
+      "expected_terminal_state": "interview_complete",
+      "preflight_summary": "Call participants Alternate answerer, then live handoff 2 SEQUENTIAL CALLERS MC ANSWERS FIRST Mei Chen answering contact · Hello? arrow_forward RC TAKES THE PHONE Robert Chen Available for handoff",
+      "initial_coach_action": "handoff",
+      "initial_coach_title": "Ask to speak with Robert Chen",
+      "validation_passed": true,
+      "caller_brief_size_bytes": 4178,
+      "handoff_voice_changed": true,
+      "post_handoff_coach_action": "ask",
+      "screenshot": "/Users/soumayseth/Documents/BlueOrigin/prototype/eligibility-workspace/qa/evidence/screenshots/bo-004-journey.png"
+    },
+    {
+      "scenario_id": "BO-005",
+      "route_id": "route:BO-005:unavailable",
+      "route_mode": "screened",
+      "expected_terminal_state": "callback_message_recorded",
+      "preflight_summary": "Call participants Applicant unavailable — callback handling 1 ANSWERER · NO HANDOFF CV ANSWERS FIRST Carlos Vega answering contact · Hello? phone_callback EV INTENDED CONTACT Elena Vega Unavailable · Today between 4 PM and 6 PM",
+      "initial_coach_action": "handoff",
+      "initial_coach_title": "Ask to speak with Elena Vega",
+      "validation_passed": true,
+      "caller_brief_size_bytes": 4145,
+      "unavailable_policy": "neutral_callback_only",
+      "callback_window": "Today between 4 PM and 6 PM",
+      "post_unavailable_coach_action": "callback",
+      "route_aware_evaluation_score": 100,
+      "screenshot": "/Users/soumayseth/Documents/BlueOrigin/prototype/eligibility-workspace/qa/evidence/screenshots/bo-005-journey.png"
+    },
+    {
+      "scenario_id": "BO-006",
+      "route_id": "route:BO-006:unavailable",
+      "route_mode": "screened",
+      "expected_terminal_state": "call_later",
+      "preflight_summary": "Call participants Applicant unavailable — callback handling 1 ANSWERER · NO HANDOFF DG ANSWERS FIRST Denise Green answering contact · Hello? phone_callback TG INTENDED CONTACT Tasha Green Unavailable · Tomorrow after 10 AM",
+      "initial_coach_action": "handoff",
+      "initial_coach_title": "Ask to speak with Tasha Green",
+      "validation_passed": true,
+      "caller_brief_size_bytes": 4176,
+      "unavailable_policy": "decline_message_offer_callback_window",
+      "callback_window": "Tomorrow after 10 AM",
+      "post_unavailable_coach_action": "callback",
+      "route_aware_evaluation_score": 100,
+      "screenshot": "/Users/soumayseth/Documents/BlueOrigin/prototype/eligibility-workspace/qa/evidence/screenshots/bo-006-journey.png"
+    }
+  ]
+}

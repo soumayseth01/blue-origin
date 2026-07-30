@@ -38,11 +38,13 @@ assert.equal(new HumeRuntimeError("socket_timeout", "connect_hume", "Timed out")
 
 {
   let constructorOptions;
+  const typedInputs = [];
   const sdkSocket = {
     readyState: 1,
     on() {},
     async waitForOpen() {},
     close() {},
+    sendUserInput(text) { typedInputs.push(text); },
   };
   class ConstructorContractHumeClient {
     constructor(options) {
@@ -58,12 +60,14 @@ assert.equal(new HumeRuntimeError("socket_timeout", "connect_hume", "Timed out")
     ensureSingleValidAudioTrack() {},
     convertBlobToBase64() {},
   });
-  await transport.connect({
+  const normalizedSocket = await transport.connect({
     session: { access_token: "temporary-token", config_id: "config-id", config_version: 3, voice_id: "voice-id" },
     onMessage() {},
     onClose() {},
     onError() {},
   });
+  normalizedSocket.send(JSON.stringify({ type: "user_input", text: "Are you married?" }));
+  assert.deepEqual(typedInputs, ["Are you married?"]);
   assert.equal(Object.keys(constructorOptions).length, 0, "the SDK client receives its required options object");
 }
 

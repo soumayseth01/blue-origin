@@ -80,7 +80,7 @@
       applicationDate: "2026-07-28",
     }]));
 
-    return {
+    const draft = {
       schemaVersion: "2.0.0-demo",
       application: {
         type: scenario.type,
@@ -91,6 +91,8 @@
         interpreterNeeded: scenario.id === "BO-005" ? "Yes" : "No",
         accessibilityNeed: "None reported",
         contactMethod: "Phone",
+        phoneContactName: primary,
+        phoneContactRelationship: "Self",
         phone: "(555) 010-2401",
         email: "synthetic@example.invalid",
         bestContactTime: "Weekdays after 3 PM",
@@ -112,6 +114,7 @@
           name: primary,
           dateOfBirth: "1993-04-17",
           relationship: "Self",
+          moveInDate: "",
           livesAtCaseAddress: "Yes",
           alternateAddress: "",
           temporaryAbsent: "No",
@@ -133,6 +136,7 @@
           name: secondPerson,
           dateOfBirth: scenario.id === "BO-004" ? "1991-08-09" : "2017-10-06",
           relationship: scenario.id === "BO-004" ? "Spouse" : "Child",
+          moveInDate: "",
           livesAtCaseAddress: "Yes",
           alternateAddress: "",
           temporaryAbsent: "No",
@@ -224,6 +228,7 @@
         final: createOutcomeRows(scenario, "final"),
       },
     };
+    return window.BlueOriginDemoScenarios?.applyApplicationOverrides?.(scenario, draft) || draft;
   }
 
   function createBlankCase(scenario) {
@@ -243,6 +248,8 @@
       interpreterNeeded: "",
       accessibilityNeed: "",
       contactMethod: "",
+      phoneContactName: "Synthetic Applicant",
+      phoneContactRelationship: "Self",
       phone: "(555) 010-0000",
       email: "applicant@example.invalid",
       bestContactTime: "",
@@ -263,6 +270,7 @@
       name: "Synthetic Applicant",
       dateOfBirth: "",
       relationship: "Self",
+      moveInDate: "",
       livesAtCaseAddress: "",
       alternateAddress: "",
       temporaryAbsent: "",
@@ -375,6 +383,8 @@
         { path: "application.interpreterNeeded", label: "Interpreter needed", type: "select", options: YES_NO_UNKNOWN, conditional: true },
         { path: "application.accessibilityNeed", label: "Accessibility need", type: "select", options: ["None reported", "Large print", "Relay service", "Sign-language interpreter", "Other"] },
         { path: "application.contactMethod", label: "Preferred contact", type: "select", options: ["Phone", "Text", "Email", "Mail", "Portal"] },
+        { path: "application.phoneContactName", label: "Person likely to answer", type: "text", provenance: "Application contact" },
+        { path: "application.phoneContactRelationship", label: "Phone contact relationship", type: "text", provenance: "Application contact" },
         { path: "application.phone", label: "Synthetic phone", type: "text" },
         { path: "application.email", label: "Synthetic email", type: "email" },
         { path: "application.bestContactTime", label: "Best contact time", type: "text" },
@@ -402,6 +412,7 @@
     const peopleRows = d.people.map((person, index) => `<tr><td><strong>${escapeHTML(person.name)}</strong><small>${escapeHTML(person.personId)}</small></td><td>${escapeHTML(person.dateOfBirth)}</td><td>${index === 0 ? ctx.mapped("household-relationship", "Relationship") : escapeHTML(person.relationship)}</td><td>${escapeHTML(person.livesAtCaseAddress)}</td><td>${Object.keys(person.programParticipation).length} program${Object.keys(person.programParticipation).length === 1 ? "" : "s"}</td><td>${index === 0 ? "Primary" : `<button class="bc-text-button" type="button" data-repeat-remove="people" data-repeat-index="${index}">Remove</button>`}</td></tr>`).join("");
     const primaryFields = fields(d, [
       { path: "people.0.livesAtCaseAddress", label: "Lives at case address", type: "select", options: YES_NO_UNKNOWN, conditional: true },
+      { path: "people.0.moveInDate", label: "Date moved into the home", type: "date" },
       { path: "people.0.alternateAddress", label: "Alternate residence", type: "text", full: true, when: (caseDraft) => caseDraft.people[0].livesAtCaseAddress === "No" },
       { path: "people.0.temporaryAbsent", label: "Temporarily absent", type: "select", options: YES_NO_UNKNOWN, conditional: true },
       { path: "people.0.absenceReason", label: "Absence reason", type: "select", options: ["", "Medical", "School", "Work", "Temporary care", "Other"], when: (caseDraft) => caseDraft.people[0].temporaryAbsent === "Yes" },
@@ -416,7 +427,23 @@
       { path: "people.0.snapFoodTogether", label: "Purchases/prepares food together", type: "select", options: YES_NO_UNKNOWN, when: () => ctx.scenario.programs.includes("SNAP") },
       { path: "people.0.tanfRole", label: "Cash-assistance family role", type: "select", options: ["Parent/caretaker", "Dependent child", "Other adult", "Not applicable"], when: () => ctx.scenario.programs.includes("TANF") },
     ]);
-    return `${accordion("household-roster", "Household roster", `${d.people.length} people · ${d.peopleStatus}`, `<div class="bc-table-wrap"><table class="bc-table"><thead><tr><th>Person</th><th>Date of birth</th><th>Relationship</th><th>Lives here</th><th>Programs</th><th></th></tr></thead><tbody>${peopleRows}</tbody></table></div><button class="bc-add-row" type="button" data-repeat-add="people"><span class="material-symbols-rounded">person_add</span>Add household member</button>`, true)}${accordion("household-primary", `${d.people[0].name} details`, "Residence, custody, tax and program relationships", primaryFields, true)}${accordion("household-program-links", "Program relationships", "Separate household concepts remain visible", `<div class="bc-program-summary">${ctx.scenario.programs.map((program) => `<article><strong>${escapeHTML(PROGRAM_LABELS[program])}</strong><span>${program === "Medicaid" ? "Tax household" : program === "SNAP" ? "Purchases and prepares together" : "Parent/caretaker and dependent child"}</span><small>Shared facts; program-specific membership</small></article>`).join("")}</div>${fields(d, [{ path: "people.0.snapFoodTogether", label: "Food unit relationship", type: "select", options: YES_NO_UNKNOWN, when: () => ctx.scenario.programs.includes("SNAP") }])}`)}`;
+    const additionalPeople = d.people.slice(1).map((person, offset) => {
+      const index = offset + 1;
+      return accordion(`household-person-${index}`, `${person.name || `Household member ${index + 1}`} details`, "Identity, residence, custody, tax and program relationships", fields(d, [
+        { path: `people.${index}.name`, label: "Full name", type: "text" },
+        { path: `people.${index}.dateOfBirth`, label: "Date of birth", type: "date" },
+        { path: `people.${index}.relationship`, label: "Relationship to applicant", type: "select", options: ["Spouse", "Child", "Parent", "Sibling", "Other adult", "Unrelated"] },
+        { path: `people.${index}.livesAtCaseAddress`, label: "Lives at case address", type: "select", options: YES_NO_UNKNOWN },
+        { path: `people.${index}.moveInDate`, label: "Date moved into the home", type: "date" },
+        { path: `people.${index}.sharedCustody`, label: "Shared-custody status", type: "select", options: ["No shared custody", "Primary residence here", "Primary residence elsewhere", "Equal/shared schedule", "Other schedule"] },
+        { path: `people.${index}.custodySchedule`, label: "Custody schedule", type: "textarea", full: true, when: (caseDraft) => !["", "No shared custody"].includes(caseDraft.people[index].sharedCustody) },
+        { path: `people.${index}.taxFilingStatus`, label: "Tax filing status", type: "select", options: ["Files taxes", "Files jointly", "Files separately", "Non-filer", "Unknown"] },
+        { path: `people.${index}.claimedAsDependent`, label: "Claimed as tax dependent", type: "select", options: YES_NO_UNKNOWN },
+        { path: `people.${index}.snapFoodTogether`, label: "Purchases/prepares food together", type: "select", options: YES_NO_UNKNOWN, when: () => ctx.scenario.programs.includes("SNAP") },
+        { path: `people.${index}.tanfRole`, label: "Cash-assistance family role", type: "select", options: ["Parent/caretaker", "Dependent child", "Other adult", "Not applicable"], when: () => ctx.scenario.programs.includes("TANF") },
+      ]));
+    }).join("");
+    return `${accordion("household-roster", "Household roster", `${d.people.length} people · ${d.peopleStatus}`, `<div class="bc-table-wrap"><table class="bc-table"><thead><tr><th>Person</th><th>Date of birth</th><th>Relationship</th><th>Lives here</th><th>Programs</th><th></th></tr></thead><tbody>${peopleRows}</tbody></table></div><button class="bc-add-row" type="button" data-repeat-add="people"><span class="material-symbols-rounded">person_add</span>Add household member</button>`, true)}${accordion("household-primary", `${d.people[0].name} details`, "Residence, custody, tax and program relationships", primaryFields, true)}${additionalPeople}${accordion("household-program-links", "Program relationships", "Separate household concepts remain visible", `<div class="bc-program-summary">${ctx.scenario.programs.map((program) => `<article><strong>${escapeHTML(PROGRAM_LABELS[program])}</strong><span>${program === "Medicaid" ? "Tax household" : program === "SNAP" ? "Purchases and prepares together" : "Parent/caretaker and dependent child"}</span><small>Shared facts; program-specific membership</small></article>`).join("")}</div>${fields(d, [{ path: "people.0.snapFoodTogether", label: "Food unit relationship", type: "select", options: YES_NO_UNKNOWN, when: () => ctx.scenario.programs.includes("SNAP") }])}`)}`;
   }
 
   function renderPrograms(ctx) {
@@ -568,7 +595,7 @@
   };
 
   function defaultRecord(type, draft) {
-    if (type === "people") return { personId: `person-${String(draft.people.length + 1).padStart(2, "0")}`, name: "New household member", dateOfBirth: "", relationship: "Other adult", livesAtCaseAddress: "Yes", alternateAddress: "", temporaryAbsent: "No", absenceReason: "", expectedReturnDate: "", sharedCustody: "No shared custody", custodySchedule: "", maritalStatus: "Unknown", taxFilingStatus: "Unknown", claimedAsDependent: "Unknown", pregnant: "Unknown", dueDate: "", snapFoodTogether: "Unknown", tanfRole: "Other adult", programParticipation: {} };
+    if (type === "people") return { personId: `person-${String(draft.people.length + 1).padStart(2, "0")}`, name: "New household member", dateOfBirth: "", relationship: "Other adult", moveInDate: "", livesAtCaseAddress: "Yes", alternateAddress: "", temporaryAbsent: "No", absenceReason: "", expectedReturnDate: "", sharedCustody: "No shared custody", custodySchedule: "", maritalStatus: "Unknown", taxFilingStatus: "Unknown", claimedAsDependent: "Unknown", pregnant: "Unknown", dueDate: "", snapFoodTogether: "Unknown", tanfRole: "Other adult", programParticipation: {} };
     if (type === "incomeSources") return { incomeId: `income-${String(draft.incomeSources.length + 1).padStart(2, "0")}`, person: draft.people[0].name, category: "Unearned income", type: "Other", employer: "", employmentStatus: "", payBasis: "", hourlyRate: "", hoursPerWeek: "", grossAmount: "", frequency: "Monthly", paymentDate: "", expectedChange: "No expected change", changeDate: "", selfEmploymentBusiness: "", grossReceipts: "", businessExpenses: "" };
     return { resourceId: `resource-${String(draft.resources.length + 1).padStart(2, "0")}`, owner: draft.people[0].name, type: "Other", institution: "", value: "", jointlyOwned: "No", incomeProducing: "No", vehicleDescription: "", vehicleUse: "" };
   }

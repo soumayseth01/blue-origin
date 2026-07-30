@@ -84,7 +84,7 @@ export const HUME_TOOL_DEFINITIONS = Object.freeze([
   {
     type: "function",
     name: "request_case_response",
-    description: "Authorize a material case fact for the active contact before speaking it. Always use this for application facts, corrections, disputes, or unknown information.",
+    description: "Authorize a gated correction, dispute, omitted detail, ambiguous multi-fact answer, or contact-specific disclosure. Ordinary authored interview facts already present in caller_brief.interview_facts should be answered directly without this tool.",
     parameters: JSON.stringify({ type: "object", properties: { active_contact_id: { type: "string", description: "The active contact ID from context." }, fact_id: { type: "string", description: "Stable fact ID when known." }, case_path: { type: "string", description: "Stable applicant-case path when known." }, topic: { type: "string", description: "Short fact topic." }, learner_question: { type: "string", description: "Concise summary of what the learner asked." } }, required: ["active_contact_id", "topic", "learner_question"] }),
     fallback_content: "I do not know that information or I am not authorized to discuss it.",
   },
@@ -163,7 +163,12 @@ export function sanitizeContactSequence(input, fallback = {}) {
     active_contact_id: answering.contact_id,
     intended_contact_availability: CONTACT_AVAILABILITY.has(source.intended_contact_availability) ? source.intended_contact_availability : "available_handoff",
     callback_window: clampText(source.callback_window || "", 160),
-    allowed_handoffs: mode === "screened" ? [{ from_contact_id: answering.contact_id, to_contact_id: intended.contact_id }] : [],
+    allowed_handoffs: mode === "screened" ? (Array.isArray(source.allowed_handoffs) ? source.allowed_handoffs.slice(0, 4).map((item) => ({ from_contact_id: clampText(item.from_contact_id, 100), to_contact_id: clampText(item.to_contact_id, 100) })) : [{ from_contact_id: answering.contact_id, to_contact_id: intended.contact_id }]) : [],
+    route_id: clampText(source.route_id || "", 120),
+    route_locked: source.route_locked === true,
+    message_policy: ["neutral_callback_only", "decline_message_offer_callback_window"].includes(source.message_policy) ? source.message_policy : "neutral_callback_only",
+    expected_handoff: source.expected_handoff === true,
+    expected_terminal_state: clampText(source.expected_terminal_state || "interview_complete", 80),
   };
 }
 
@@ -172,6 +177,7 @@ export function sanitizeApplicationContext(input) {
   const corrections = Array.isArray(context.private_corrections) ? context.private_corrections.slice(0, 20) : [];
   const missing = Array.isArray(context.missing_facts) ? context.missing_facts.slice(0, 20) : [];
   const facts = Array.isArray(context.facts) ? context.facts.slice(0, 500) : [];
+  const interviewFacts = Array.isArray(context.interview_facts) ? context.interview_facts.slice(0, 80) : [];
   return {
     case_type: clampText(context.case_type, 80),
     programs: Array.isArray(context.programs) ? context.programs.slice(0, 6).map((item) => clampText(item, 40)) : [],
@@ -185,6 +191,19 @@ export function sanitizeApplicationContext(input) {
       applicant_value: clampStructured(item.applicant_value),
       status: ["submitted", "confirmed", "corrected", "disputed", "unknown", "not_applicable", "worker_only"].includes(item.status) ? item.status : "submitted",
       provenance: clampText(item.provenance || "Submitted application", 120),
+      allowed_contact_ids: Array.isArray(item.allowed_contact_ids) ? item.allowed_contact_ids.slice(0, 8).map((id) => clampText(id, 100)) : [],
+    })),
+    interview_facts: interviewFacts.map((item) => ({
+      fact_id: clampText(item.fact_id, 120),
+      case_path: clampText(item.case_path, 220),
+      topic: clampText(item.topic, 160),
+      applicant_value: clampStructured(item.applicant_value),
+      normalized_value: clampStructured(item.normalized_value),
+      authorized_response: clampText(item.authorized_response, 1200),
+      status: ["interview_only", "conversation_topic"].includes(item.status) ? item.status : "interview_only",
+      provenance: clampText(item.provenance || "Caller statement", 120),
+      destination_stage: clampText(item.destination_stage, 80),
+      destination_section: clampText(item.destination_section, 120),
       allowed_contact_ids: Array.isArray(item.allowed_contact_ids) ? item.allowed_contact_ids.slice(0, 8).map((id) => clampText(id, 100)) : [],
     })),
     private_corrections: corrections.map((item) => ({ fact_id: clampText(item.fact_id, 120), case_path: clampText(item.case_path, 220), topic: clampText(item.topic, 160), authorized_response: clampText(item.authorized_response, 800), status: clampText(item.status || "corrected", 30), allowed_contact_ids: Array.isArray(item.allowed_contact_ids) ? item.allowed_contact_ids.slice(0, 8).map((id) => clampText(id, 100)) : [] })),
@@ -241,8 +260,8 @@ export function buildContactPrompt(session) {
   const activeIsIntended = contact.contact_id === intended.contact_id;
   const contactRouting = activeIsIntended
     ? `You are already speaking with the intended contact. If the learner asks for ${intended.name}, say that this is ${intended.name.split(/\s+/)[0]}. Never say that you are unavailable, offer a handoff to yourself, or offer to take a message for yourself.`
-    : `The intended contact's authored availability is ${session.contact_sequence.intended_contact_availability.replaceAll("_", " ")}; the authored callback window is ${JSON.stringify(session.contact_sequence.callback_window || "not provided")}. If asked for the intended contact, follow those availability and handoff rules. Do not switch identities yourself. Use request_contact_handoff and wait for the authorized result before speaking as another person. If the intended contact is unavailable and the learner proposes a message, use record_callback_message before accepting or repeating it.`;
-  return `You are ${contact.name}, the active ${contact.role.replaceAll("_", " ")} in synthetic case ${session.case_id}. The intended contact for this call is ${intended.name}. ${contactRouting} Your knowledge scope is ${contact.knowledge_scope.replaceAll("_", " ")}, disclosure authority is ${contact.disclosure_authority}, and message authority is ${contact.message_authority}. You are answering a phone call and do not initially know why the learner is calling. Begin only with the configured greeting: ${JSON.stringify(contact.greeting)}. Do not mention benefits, the application, the agency, or the call purpose until the learner explains it. The caller_brief in context is authoritative: use its submitted facts exactly, never change amounts, dates, names, programs, people, or statuses, and never invent a material fact. If a material answer is absent, say it was not provided or is not remembered. Use request_case_response for every gated fact, correction, dispute, omitted detail, or ambiguous multi-fact question. Use only facts within your contact knowledge scope. Do not adopt facts known only by another household member, the intended applicant, or the agency. Distinguish submitted facts from facts that are confirmed, corrected, disputed, unknown, or not remembered. Begin with the authored disposition and intensity, then react naturally to the learner's tone, clarity, empathy, pacing, and interview conduct. Do not announce or describe your emotional state. Never provide policy advice, coach or score the learner, operate the eligibility system, browse the web, invent information, threaten, or become abusive. ${profile.instructions} ${intensity.instructions} Keep responses concise and natural for a phone interview.`;
+    : `The intended contact's authored availability is ${session.contact_sequence.intended_contact_availability.replaceAll("_", " ")}; the authored callback window is ${JSON.stringify(session.contact_sequence.callback_window || "not provided")}; the message policy is ${String(session.contact_sequence.message_policy || "neutral_callback_only").replaceAll("_", " ")}. If asked for the intended contact, follow those availability and handoff rules. Do not switch identities yourself. Use request_contact_handoff and wait for the authorized result before speaking as another person. If the intended contact is unavailable and the learner proposes a message, use record_callback_message before accepting or repeating it. If the message policy says decline message offer, politely decline to take any message and provide only the authored callback window.`;
+  return `You are ${contact.name}, the active ${contact.role.replaceAll("_", " ")} in synthetic case ${session.case_id}. The intended contact for this call is ${intended.name}. ${contactRouting} Your knowledge scope is ${contact.knowledge_scope.replaceAll("_", " ")}, disclosure authority is ${contact.disclosure_authority}, and message authority is ${contact.message_authority}. You are answering a phone call and do not initially know why the learner is calling. Begin only with the configured greeting: ${JSON.stringify(contact.greeting)}. Do not mention benefits, the application, the agency, or the call purpose until the learner explains it. The caller_brief in context is authoritative: use its submitted facts and authored interview_facts exactly, including each authored response; never change amounts, dates, names, programs, people, or statuses, and never invent a material fact. Answer ordinary questions covered by interview_facts directly without a tool. Use request_case_response only for gated corrections, disputes, omitted details, ambiguous multi-fact questions, or contact-specific disclosure checks. Use only facts within your contact knowledge scope. Do not adopt facts known only by another household member, the intended applicant, or the agency. Distinguish submitted facts from facts that are confirmed, corrected, disputed, unknown, or not remembered. Speak like a real person, never like a database or application. Do not say that a fact is 'not in the application', 'not in the payload', or 'not in the system'. When you genuinely do not know, say naturally that you are not sure, do not remember, or need to check. For an appropriate open interview question, answer directly in the first sentence and add one useful authored detail in a second sentence when available. Most answers should be one to three sentences and roughly 10 to 45 words; do not give one-word answers to exploratory questions and do not turn answers into long monologues. A simple confirmation may remain brief when no context is useful. Begin with the authored disposition and intensity, then react naturally to the learner's tone, clarity, empathy, pacing, and interview conduct. Do not announce or describe your emotional state. Never provide policy advice, coach or score the learner, operate the eligibility system, browse the web, invent information, threaten, or become abusive. ${profile.instructions} ${intensity.instructions}`;
 }
 
 export function buildAuthoritativeHumeSession({ scenario_id, scenario_input, profile_id, intensity, voice_key, voice_override, application_context, caller_brief, contact_sequence, turn_policy, session_id }) {
@@ -257,6 +276,7 @@ export function buildAuthoritativeHumeSession({ scenario_id, scenario_input, pro
   const context = sanitizeApplicationContext(application_context);
   const currentState = profile_id.startsWith("benefits-") ? profile_id.replace("benefits-", "") : profile.expression;
   const sequence = sanitizeContactSequence(contact_sequence, { name: scenario.name, profile_id, intensity, voice_key, voice_id: voice.voice_id, voice_label: voice.label, voice_presentation: voice.presentation });
+  const initialContact = sequence.contacts.find((contact) => contact.contact_id === sequence.active_contact_id) || sequence.contacts[0];
   const resolvedBrief = assertCallerBriefValid(resolveDemoCallerBrief({ definition: caller_brief, applicationContext: context, contactSequence: sequence, scenarioId: scenario_id }));
   const persistentContext = {
     training_boundary: "Synthetic applicant facts only. Never provide policy guidance or invent information.",
@@ -267,7 +287,7 @@ export function buildAuthoritativeHumeSession({ scenario_id, scenario_input, pro
     conversation_phase: "answering",
     confirmed_fact_ids: [],
     caller_profile: { profile_id, intended_expression: profile.expression, cooperation_style: profile.cooperation, disclosure_resistance: profile.resistance, adaptation: "hume_driven" },
-    selected_voice: { voice_key, voice_id: voice.voice_id, label: voice.label, presentation: voice.presentation },
+    selected_voice: { voice_key: initialContact.voice_key, voice_id: initialContact.voice_id, label: initialContact.voice_label, presentation: initialContact.voice_presentation },
     current_behavior_state: { state: currentState, intensity: intensityConfig.value, cooperation: profile.cooperation, source: "authored_seed" },
     application_context: context,
   };
@@ -278,8 +298,8 @@ export function buildAuthoritativeHumeSession({ scenario_id, scenario_input, pro
     profile_id,
     intensity,
     voice_key,
-    voice_id: voice.voice_id,
-    selection: { profile: profile.label, expression: profile.expression, intensity, voice: voice.label, presentation: voice.presentation },
+    voice_id: initialContact.voice_id,
+    selection: { profile: profile.label, expression: profile.expression, intensity, voice: initialContact.voice_label, presentation: initialContact.voice_presentation },
     contact_sequence: sequence,
     turn_policy: {
       end_of_turn_silence_ms: Math.max(500, Math.min(3000, Number(turn_policy?.end_of_turn_silence_ms || 2000))),
@@ -311,12 +331,15 @@ export function buildHumeClientContext(session = {}) {
     conversation_phase: context.conversation_phase || "answering",
     confirmed_fact_ids: Array.isArray(context.confirmed_fact_ids) ? context.confirmed_fact_ids.slice(0, 40) : [],
     contact_sequence: {
+      route_id: sequence.route_id || "",
       mode: sequence.mode || "direct",
       answering_contact_id: sequence.answering_contact_id || null,
       intended_contact_id: sequence.intended_contact_id || null,
       active_contact_id: context.active_contact_id || sequence.active_contact_id || null,
       intended_contact_availability: sequence.intended_contact_availability || "available_handoff",
       callback_window: sequence.callback_window || "",
+      message_policy: sequence.message_policy || "neutral_callback_only",
+      expected_terminal_state: sequence.expected_terminal_state || "interview_complete",
       allowed_handoffs: Array.isArray(sequence.allowed_handoffs) ? sequence.allowed_handoffs.slice(0, 4) : [],
       contacts: Array.isArray(sequence.contacts) ? sequence.contacts.slice(0, 8).map((contact) => ({
         contact_id: contact.contact_id,
@@ -365,6 +388,7 @@ export function verifySessionEnvelope(envelope, secret) {
 export function authorizeCaseFact(session, input = {}) {
   const application = session.context?.application_context || {};
   const corrections = application.private_corrections || [];
+  const interviewFacts = application.interview_facts || [];
   const facts = application.facts || [];
   const contact = activeContact(session);
   const requestedContactId = clampText(input.active_contact_id, 100);
@@ -373,6 +397,7 @@ export function authorizeCaseFact(session, input = {}) {
   const casePath = clampText(input.case_path, 220);
   const topic = clampText(input.topic, 120).toLowerCase();
   const fact = corrections.find((item) => item.fact_id === factId || (casePath && item.case_path === casePath) || (topic && item.topic.toLowerCase().includes(topic)))
+    || interviewFacts.find((item) => item.fact_id === factId || (casePath && item.case_path === casePath) || (topic && (item.topic.toLowerCase().includes(topic) || topic.includes(item.topic.toLowerCase()))))
     || facts.find((item) => item.fact_id === factId || (casePath && item.case_path === casePath) || (topic && item.topic.toLowerCase().includes(topic)));
   const allowed = fact && contact.disclosure_authority !== "none" && (!fact.allowed_contact_ids?.length || fact.allowed_contact_ids.includes(contact.contact_id));
   if (!allowed) return { authorized: false, response_text: "I do not know that information or I am not authorized to discuss it.", fact_ids: [], session };
@@ -381,7 +406,7 @@ export function authorizeCaseFact(session, input = {}) {
   confirmed.add(fact.fact_id);
   const revised = { ...session, context: { ...session.context, context_revision: Number(session.context.context_revision || 0) + 1, conversation_phase: "interview", confirmed_fact_ids: [...confirmed] } };
   return fact
-    ? { authorized: true, response_text: responseText, fact_status: fact.status || "confirmed", fact_ids: [fact.fact_id], case_paths: fact.case_path ? [fact.case_path] : [], session: revised }
+    ? { authorized: true, response_text: responseText, fact_status: fact.status || "confirmed", fact_ids: [fact.fact_id], case_paths: fact.case_path ? [fact.case_path] : [], fact: { fact_id: fact.fact_id, case_path: fact.case_path || "", label: fact.topic || "Case fact", normalized_value: fact.normalized_value ?? fact.applicant_value ?? fact.submitted_value ?? "", display_value: fact.normalized_value ?? fact.applicant_value ?? fact.submitted_value ?? "", provenance: fact.provenance || (fact.status === "interview_only" ? "Caller statement" : "Submitted application"), destination_stage: fact.destination_stage || "", destination_section: fact.destination_section || "" }, session: revised }
     : { authorized: false, response_text: "I can only respond with facts contained in this training case.", fact_ids: [] };
 }
 

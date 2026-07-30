@@ -1,0 +1,26 @@
+{
+  "generated_at": "2026-07-30T19:03:24.794Z",
+  "session_id_suffix": "bdb00b80",
+  "scenario_id": "BO-001",
+  "config_version": 4,
+  "caller_brief_size_bytes": 7167,
+  "hume_context_size_bytes": 11210,
+  "voice_id_suffix": "84695e99",
+  "milestones": [
+    "chat_metadata",
+    "assistant_message",
+    "audio_output",
+    "audio_output",
+    "assistant_prosody",
+    "user_interruption",
+    "assistant_end",
+    "user_message",
+    "assistant_message"
+  ],
+  "audio_chunk_count": 2,
+  "assistant_message_count": 2,
+  "greeting": "Hello, this is Maya.",
+  "interview_answer": "I'm separated. My husband does not live with us right now. Is there something specific you would like to know about my situation?",
+  "communicative_answer": true,
+  "forbidden_system_language_absent": true
+}
