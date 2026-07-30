@@ -1,0 +1,62 @@
+# Demo Simulation Refinement Checklist
+
+**Scope:** Six authored BenefitConnect demonstration cases  
+**Updated:** July 30, 2026  
+**Release boundary:** Synthetic training only; no eligibility engine
+
+## Completion status
+
+### Scenario truth and deterministic routes
+
+- [x] Lock BO-001 and BO-002 to direct applicant calls.
+- [x] Lock BO-003 and BO-004 to alternate answerers followed by an authorized handoff.
+- [x] Give both handoff contacts distinct Hume voices and reset caller behavior after the transition.
+- [x] Lock BO-005 and BO-006 to unavailable-contact branches with different privacy outcomes.
+- [x] Give BO-005 a neutral-message branch and BO-006 a no-message/call-later branch.
+- [x] Validate the 2 direct / 2 handoff / 2 unavailable distribution in a contract test.
+
+### Application and caller parity
+
+- [x] Make BO-001 and BO-002 rich interview cases with at least 12 deliberately blank material fields.
+- [x] Use stable `integratedCase` paths for every authored interview fact.
+- [x] Keep submitted application facts, interview-only facts, corrections, and worker-only facts distinct.
+- [x] Generate compact caller briefs below 8 KB and total Hume context below 12 KB.
+- [x] Exclude evidence conclusions, outcomes, notices, authorization, scoring, and coaching from caller knowledge.
+- [x] Block scenario validation when a blank interview fact is prepopulated or a referenced path is missing.
+
+### Natural caller experience
+
+- [x] Use a neutral or name-only phone greeting without assuming the call purpose.
+- [x] Require one-to-three-sentence conversational answers for exploratory questions.
+- [x] Prohibit “not in the application/payload/system” language.
+- [x] Permit natural hesitation, small talk, clarification, and “I don’t remember” responses.
+- [x] Prevent invention of material case facts.
+- [x] Retain deterministic handoff, disclosure, and callback privacy tools.
+- [x] Correlate ordinary tool-free Hume answers back to authored facts so the coach and results advance.
+
+### Proactive coach and connected workflow
+
+- [x] Show the next best question automatically in Practice mode.
+- [x] After a supported caller answer, show the normalized value and exact BenefitConnect destination.
+- [x] Automatically navigate, open the correct accordion, and focus the destination field.
+- [x] Advance to the next question after the learner enters the supported value.
+- [x] Guide handoff and unavailable-contact branches without requiring a hint-button click.
+- [x] Keep the coach hidden in Assessment mode.
+- [x] Use route-aware scoring so unavailable callers are not penalized for unperformed eligibility work.
+
+### QA and release gates
+
+- [x] Contract-test scenario distribution, application blanks, caller responses, voice differences, and privacy routes.
+- [x] Browser-test all six route starts, proactive field focus, unavailable scoring, mobile overflow, and console errors.
+- [x] Provide developer text-QA mode using the live Hume prompt, brief, tools, and route.
+- [x] Canary BO-001 greeting and one rich factual answer with generated Hume audio.
+- [ ] Run a full factual question matrix for all six callers in live Hume text mode.
+- [ ] Run live Hume handoff canaries for BO-003 and BO-004, including actual voice/context change.
+- [ ] Run live unavailable-contact/message canaries for BO-005 and BO-006.
+- [ ] Complete an end-to-end BO-001 and BO-002 interview through field entry, evidence, authored outcome, notices, authorization, and results.
+- [ ] Perform human-audible Safari and Chrome canaries for direct, handoff, and unavailable routes.
+- [ ] Deploy the transcript-to-fact synchronization change to Vercel and repeat production browser smoke tests.
+
+## Current implementation focus
+
+The transcript-to-fact synchronization bridge is the current release item. It deterministically compares the learner’s question and Hume’s answer with the frozen truth ledger. Only authored matches are recorded; unsupported or unknown responses do not populate facts. The first matched fact drives proactive field focus, and all recorded matches remain attached to the caller turn for scoring and replay.

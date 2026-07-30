@@ -616,6 +616,7 @@ const state = {
   openCaseSections: null,
   disclosedFacts: new Set(),
   conversationFactEvents: [],
+  pendingLearnerQuestion: "",
   handoffCompleted: false,
   handoffAttempted: false,
   callbackDisposition: null,
@@ -1586,8 +1587,52 @@ function renderPrompts() {
   dom.factsRevealed.textContent = `${Math.min(interviewFacts.length, state.disclosedFacts.size)} / ${interviewFacts.length} interview facts`;
 
   dom.promptGrid.querySelectorAll("[data-fact]").forEach((button) => {
-    button.addEventListener("click", () => liveHume ? showToast("Ask the caller aloud", "Hume will request server authorization before the active contact discloses a material fact.", "•") : discloseFact(button.dataset.fact));
+    button.addEventListener("click", () => liveHume ? showToast("Ask the caller aloud", "Hume will answer from the authored caller brief. The coach will connect the supported response to its BenefitConnect field.", "•") : discloseFact(button.dataset.fact));
   });
+}
+
+function recordConversationFact(fact, response, { source = "authored_caller_brief", focus = true } = {}) {
+  const factId = fact?.fact_id || fact?.id;
+  if (!factId || state.disclosedFacts.has(factId)) return null;
+  state.disclosedFacts.add(factId);
+  const factEvent = {
+    conversation_fact_event_id: `conversation-fact:${Date.now()}-${state.conversationFactEvents.length + 1}`,
+    fact_id: factId,
+    contact_id: state.humeSession.activeContactId,
+    case_path: fact.case_path || "",
+    label: fact.label || fact.topic || "Interview fact",
+    normalized_value: fact.normalized_value ?? "",
+    display_value: fact.normalized_value ?? "",
+    provenance: fact.provenance || "Caller statement",
+    destination_stage: fact.destination_stage || "",
+    destination_section: fact.destination_section || "",
+    disclosure_source: source,
+    disclosed_at: new Date().toISOString(),
+  };
+  state.conversationFactEvents.unshift(factEvent);
+  addEvent("voice", `Client disclosed: ${factEvent.label}`, { target: `fact:${factId}`, after: response, sequenceStatus: source, citation: `${NOTEBOOK_ID} · authored interview facts` });
+  if (focus && factEvent.case_path) window.setTimeout(() => focusConversationFactDestination(factEvent), 180);
+  return factEvent;
+}
+
+function synchronizeAuthoredFactsFromConversation(learnerText, callerText, turn) {
+  const scenario = getScenario();
+  const route = state.humeSession.contactSequence || scenario.contactSequence;
+  const activeContactId = state.humeSession.activeContactId || route?.active_contact_id;
+  if (!route || activeContactId !== route.intended_contact_id) return [];
+  const matches = window.BlueOriginDemoScenarios?.matchConversationFacts?.({
+    learner_text: learnerText,
+    caller_text: callerText,
+    facts: scenario.truthLedger || scenario.interviewFacts || [],
+    disclosed_fact_ids: [...state.disclosedFacts],
+  }) || [];
+  const recorded = matches.map((fact, index) => recordConversationFact(fact, callerText, { source: "hume_authored_brief_match", focus: index === 0 })).filter(Boolean);
+  if (recorded.length && turn) turn.disclosed_fact_ids = [...new Set([...(turn.disclosed_fact_ids || []), ...recorded.map((fact) => fact.fact_id)])];
+  if (recorded.length) {
+    renderPrompts();
+    renderCoachGuidance();
+  }
+  return recorded;
 }
 
 function discloseFact(factId) {
@@ -1598,7 +1643,6 @@ function discloseFact(factId) {
   const response = fact.natural_response || fact.authorized_response || fact.caption;
   const label = fact.label || fact.topic;
   const wasNew = !state.disclosedFacts.has(factId);
-  state.disclosedFacts.add(factId);
   dom.clientCaption.classList.add("transitioning");
   window.setTimeout(() => {
     dom.clientCaption.textContent = response;
@@ -1610,24 +1654,7 @@ function discloseFact(factId) {
     addVoiceTurn("client", response, [fact.fact_id || fact.id]);
     if (state.humeSession.status === "guided") speakGuidedCaller(response);
     transitionCallerAffect("deescalate", `appropriate_${fact.id}_question`);
-    addEvent("voice", `Client disclosed: ${label}`, { target: `fact:${fact.fact_id || fact.id}`, after: response, citation: `${NOTEBOOK_ID} · authored interview facts` });
-    if (fact.case_path) {
-      const factEvent = {
-        conversation_fact_event_id: `conversation-fact:${Date.now()}-${state.conversationFactEvents.length + 1}`,
-        fact_id: fact.fact_id || fact.id,
-        contact_id: state.humeSession.activeContactId,
-        case_path: fact.case_path,
-        label,
-        normalized_value: fact.normalized_value,
-        display_value: fact.normalized_value,
-        provenance: fact.provenance || "Caller statement",
-        destination_stage: fact.destination_stage || "",
-        destination_section: fact.destination_section || "",
-        disclosed_at: new Date().toISOString(),
-      };
-      state.conversationFactEvents.unshift(factEvent);
-      window.setTimeout(() => focusConversationFactDestination(factEvent), 100);
-    }
+    recordConversationFact(fact, response, { source: "guided_authored_fact" });
   }
   renderPrompts();
   renderCoachGuidance();
@@ -3254,8 +3281,13 @@ function handleHumeMessage(raw) {
     if (type === "assistant_message") state.humeSession.currentResponseId = responseId || state.humeSession.currentResponseId;
     if (text && !message.interim) {
       const factIds = type === "assistant_message" ? (message.fact_ids || state.humeSession.pendingFactIds || []) : [];
-      addVoiceTurn(type === "assistant_message" ? "client" : "learner", text, factIds);
-      if (type === "assistant_message") state.humeSession.pendingFactIds = [];
+      const turn = addVoiceTurn(type === "assistant_message" ? "client" : "learner", text, factIds);
+      if (type === "user_message") state.pendingLearnerQuestion = text;
+      if (type === "assistant_message") {
+        synchronizeAuthoredFactsFromConversation(state.pendingLearnerQuestion, text, turn);
+        state.pendingLearnerQuestion = "";
+        state.humeSession.pendingFactIds = [];
+      }
     }
   }
   if (type === "expression_measurement" || message.models?.prosody) {
@@ -3505,6 +3537,7 @@ function selectScenario(index) {
   state.openCaseSections = null;
   state.disclosedFacts = new Set();
   state.conversationFactEvents = [];
+  state.pendingLearnerQuestion = "";
   state.handoffCompleted = false;
   state.handoffAttempted = false;
   state.callbackDisposition = null;

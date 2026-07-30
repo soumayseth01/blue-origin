@@ -29,6 +29,56 @@
     return value !== undefined && value !== null && value !== "" && !(Array.isArray(value) && value.length === 0);
   }
 
+  const CONVERSATION_STOP_WORDS = new Set(["a", "about", "an", "and", "are", "as", "at", "be", "been", "before", "can", "currently", "did", "do", "does", "for", "from", "have", "how", "i", "in", "is", "it", "me", "my", "of", "on", "or", "please", "tell", "that", "the", "this", "to", "was", "what", "when", "which", "who", "with", "you", "your"]);
+  const CONVERSATION_ALIASES = Object.freeze({
+    married: "marital", marriage: "marital", husband: "spouse", wife: "spouse",
+    birthday: "birth", born: "birth", dob: "birth", wages: "pay", earnings: "pay", paycheck: "pay",
+    working: "work", worked: "work", childcare: "care", daycare: "care", electricity: "electric",
+    insurance: "coverage", bank: "account", savings: "account", custody: "custody",
+  });
+
+  function conversationTokens(value) {
+    return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(/\s+/).filter(Boolean).map((word) => CONVERSATION_ALIASES[word] || word.replace(/(?:ing|ed|ly|s)$/i, "")).filter((word) => word.length > 1 && !CONVERSATION_STOP_WORDS.has(word));
+  }
+
+  function tokenOverlap(left, right) {
+    const leftSet = new Set(conversationTokens(left));
+    const rightSet = new Set(conversationTokens(right));
+    if (!leftSet.size || !rightSet.size) return 0;
+    const shared = [...leftSet].filter((token) => rightSet.has(token)).length;
+    return shared / Math.max(1, Math.min(leftSet.size, rightSet.size));
+  }
+
+  function answerContainsValue(answer, value) {
+    const expected = String(value ?? "").toLowerCase().trim();
+    if (!expected) return false;
+    const normalizedAnswer = String(answer || "").toLowerCase();
+    if (/\d/.test(expected)) {
+      const expectedNumbers = expected.match(/\d+/g) || [];
+      const answerNumbers = normalizedAnswer.match(/\d+/g) || [];
+      if (expectedNumbers.length && expectedNumbers.every((number) => answerNumbers.includes(number))) return true;
+    }
+    const valueTokens = conversationTokens(expected);
+    const answerTokens = new Set(conversationTokens(normalizedAnswer));
+    return valueTokens.length > 0 && valueTokens.every((token) => answerTokens.has(token));
+  }
+
+  function matchConversationFacts({ learner_text = "", caller_text = "", facts = [], disclosed_fact_ids = [] } = {}) {
+    const disclosed = new Set(disclosed_fact_ids || []);
+    const candidates = (facts || []).filter((fact) => fact?.fact_id && !disclosed.has(fact.fact_id)).map((fact, index) => {
+      const prompts = [...(fact.learner_question_examples || []), fact.topic, fact.label].filter(Boolean);
+      const questionScore = prompts.reduce((best, prompt) => Math.max(best, tokenOverlap(learner_text, prompt)), 0);
+      const answerScore = tokenOverlap(caller_text, fact.natural_response || fact.authorized_response || "");
+      const valueMatch = answerContainsValue(caller_text, fact.normalized_value);
+      const score = (questionScore * 0.68) + (answerScore * 0.32) + (valueMatch ? 0.24 : 0);
+      const supported = (questionScore >= 0.32 && (answerScore >= 0.12 || valueMatch)) || answerScore >= 0.55;
+      return { fact, index, score, question_score: questionScore, answer_score: answerScore, value_match: valueMatch, supported };
+    }).filter((item) => item.supported).sort((left, right) => right.score - left.score || left.index - right.index);
+    if (!candidates.length) return [];
+    const primary = candidates[0];
+    return candidates.filter((item, index) => index === 0 || (item.answer_score >= 0.72 && item.score >= primary.score - 0.08)).slice(0, 3).map((item) => ({ ...item.fact, match: { score: Number(item.score.toFixed(3)), question_score: Number(item.question_score.toFixed(3)), answer_score: Number(item.answer_score.toFixed(3)), value_match: item.value_match } }));
+  }
+
   function interviewFact(fact_id, case_path, label, normalized_value, natural_response, options = {}) {
     return {
       fact_id,
@@ -292,5 +342,5 @@
     return { version: VERSION, integratedCase: caseDraft, contactSequence, truthLedger, interviewFacts: factsForScenario(scenario), coachJourney: journey, validation };
   }
 
-  global.BlueOriginDemoScenarios = { VERSION, ROUTES, getPath, setPath, meaningful, applyApplicationOverrides, buildContactSequence, buildTruthLedger, buildJourney, validateBundle, compileScenario, factsForScenario };
+  global.BlueOriginDemoScenarios = { VERSION, ROUTES, getPath, setPath, meaningful, matchConversationFacts, applyApplicationOverrides, buildContactSequence, buildTruthLedger, buildJourney, validateBundle, compileScenario, factsForScenario };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -74,4 +74,33 @@ assert.equal(bundles[5].contactSequence.message_policy, "decline_message_offer_c
 assert.equal(bundles[4].contactSequence.allowed_handoffs.length, 0);
 assert.equal(bundles[5].contactSequence.allowed_handoffs.length, 0);
 
+const maritalMatches = demo.matchConversationFacts({
+  learner_text: "Are you currently married?",
+  caller_text: "I’m separated. My husband does not live with us right now.",
+  facts: bundles[0].truthLedger,
+  disclosed_fact_ids: [],
+});
+assert.equal(maritalMatches[0]?.fact_id, "bo001-marital");
+assert.ok(maritalMatches[0]?.match.score > 0.5);
+
+const unknownMatches = demo.matchConversationFacts({
+  learner_text: "What color is your front door?",
+  caller_text: "I do not remember that detail.",
+  facts: bundles[0].truthLedger,
+  disclosed_fact_ids: [],
+});
+assert.equal(unknownMatches.length, 0);
+
+for (const bundle of bundles.slice(0, 2)) {
+  for (const fact of bundle.truthLedger) {
+    const matches = demo.matchConversationFacts({
+      learner_text: fact.learner_question_examples[0],
+      caller_text: fact.natural_response,
+      facts: bundle.truthLedger,
+      disclosed_fact_ids: [],
+    });
+    assert.equal(matches[0]?.fact_id, fact.fact_id, `${fact.fact_id} did not map its authored question and answer back to the correct case path`);
+  }
+}
+
 process.stdout.write("Demo scenario system contract: ok\n");
