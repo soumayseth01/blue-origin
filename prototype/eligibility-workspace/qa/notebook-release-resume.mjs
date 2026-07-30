@@ -36,10 +36,13 @@ try {
   await page.goto(baseURL, { waitUntil: "networkidle" });
   await page.locator('[data-view="notebook"]').first().click();
   await page.locator(`[data-open-notebook-id="${notebookId}"]`).first().click();
+  await page.waitForFunction((id) => Boolean(state.artifactStudio.notebooks.find((item) => item.id === id)?.content_brief?.version), notebookId);
   await page.locator('[data-nj-action="release"]').first().click();
   await page.getByRole("heading", { name: "Ready to publish" }).waitFor();
-  assert.equal(await page.locator(".nj-checkrow .ok").count(), 6, "Every release check must pass");
   await page.screenshot({ path: resolve(evidenceDir, "15-release-review-publish.png"), fullPage: true });
+  const releaseChecks = await page.locator(".nj-checkrow").allInnerTexts();
+  console.log(JSON.stringify({ release_checks: releaseChecks }));
+  assert.equal(await page.locator(".nj-checkrow .ok").count(), 6, "Every release check must pass");
 
   const reviewDate = new Date(Date.now() + 210 * 86400000).toISOString().slice(0, 10);
   await page.locator("#njReviewDate").fill(reviewDate);
