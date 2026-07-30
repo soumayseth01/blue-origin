@@ -146,6 +146,8 @@ async function runScenario(definition) {
   const toolCalls = [];
   const answers = [];
   const milestones = [];
+  let interviewAnswerCount = 0;
+  let repetitiveInterviewCloserCount = 0;
   let audioChunkCount = 0;
   const client = new HumeClient({});
   const socket = client.empathicVoice.chat.connect({
@@ -241,11 +243,15 @@ async function runScenario(definition) {
       for (const fact of definition.facts.filter((item) => item.required !== false)) {
         const question = fact.learner_question_examples?.[0] || `Can you tell me about ${fact.label}?`;
         let answer = await sendTurn(question);
+        interviewAnswerCount += 1;
+        if (/\b(anything else|any other questions|what else (?:would|do) you|how else can i help)\b/i.test(answer)) repetitiveInterviewCloserCount += 1;
         let score = supportScore(answer, fact.natural_response);
         let clarified = false;
         if (score < 0.18 && !normalizedValueSupported(answer, fact.normalized_value)) {
           clarified = true;
           answer = await sendTurn(`I want to make sure I record this correctly. Can you give me the current detail for ${fact.label.toLowerCase()}?`);
+          interviewAnswerCount += 1;
+          if (/\b(anything else|any other questions|what else (?:would|do) you|how else can i help)\b/i.test(answer)) repetitiveInterviewCloserCount += 1;
           score = supportScore(answer, fact.natural_response);
         }
         assert.ok(score >= 0.18 || normalizedValueSupported(answer, fact.normalized_value), `${definition.scenario_id}/${fact.fact_id} was not supported after clarification (score ${score.toFixed(2)}): ${answer}`);
@@ -253,6 +259,7 @@ async function runScenario(definition) {
         answers.at(-1).support_score = Number(score.toFixed(3));
         answers.at(-1).clarification = clarified;
       }
+      assert.ok(repetitiveInterviewCloserCount <= Math.max(1, Math.floor(interviewAnswerCount * 0.15)), `${definition.scenario_id} repeatedly turned factual answers into conversation-closing questions (${repetitiveInterviewCloserCount}/${interviewAnswerCount})`);
     }
 
     assert.ok(audioChunkCount > 0, `${definition.scenario_id} produced no Hume audio output`);

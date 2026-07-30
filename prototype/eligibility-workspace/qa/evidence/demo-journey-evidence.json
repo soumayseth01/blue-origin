@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-07-30T19:42:22.955Z",
-  "base_url": "https://eligibility-workspace-nu.vercel.app",
+  "generated_at": "2026-07-30T21:08:08.574Z",
+  "base_url": "http://127.0.0.1:8112",
   "browser": "Chromium headless",
   "route_distribution": {
     "direct": 2,
@@ -26,7 +26,9 @@
       "caller_brief_size_bytes": 7164,
       "first_fact": "bo001-marital",
       "coach_auto_focused": true,
+      "coach_auto_revealed": true,
       "enter_destination": "people.0.maritalStatus",
+      "next_question_after_entry": "Do you file taxes?",
       "screenshot": "/Users/soumayseth/Documents/BlueOrigin/prototype/eligibility-workspace/qa/evidence/screenshots/bo-001-journey.png"
     },
     {
@@ -41,7 +43,9 @@
       "caller_brief_size_bytes": 6207,
       "first_fact": "bo002-marital",
       "coach_auto_focused": true,
+      "coach_auto_revealed": true,
       "enter_destination": "people.0.maritalStatus",
+      "next_question_after_entry": "What is Nia's date of birth?",
       "screenshot": "/Users/soumayseth/Documents/BlueOrigin/prototype/eligibility-workspace/qa/evidence/screenshots/bo-002-journey.png"
     },
     {

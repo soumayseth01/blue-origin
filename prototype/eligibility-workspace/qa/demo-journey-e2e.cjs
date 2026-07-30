@@ -56,12 +56,24 @@ let browser;
       const located = await page.locator(`[data-case-path="${firstFact.case_path}"]`).evaluate((element) => element.classList.contains("located") && document.activeElement === element);
       const enterCoach = await page.evaluate(() => state.coachRecommendation);
       assert.equal(located, true, `${scenario.id} did not proactively focus the answer destination`);
+      assert.equal(await page.evaluate(() => state.coachTab), "coach", `${scenario.id} left the updated guidance hidden behind the Client tab`);
       assert.equal(enterCoach.action_type, "enter");
       assert.equal(enterCoach.target.case_path, firstFact.case_path);
       assert.ok(await page.evaluate((factId) => state.voiceTurns.some((turn) => turn.speaker === "client" && turn.disclosed_fact_ids.includes(factId)), firstFact.fact_id));
+      await page.locator(`[data-case-path="${firstFact.case_path}"]`).evaluate((control, value) => {
+        control.value = value;
+        control.dispatchEvent(new Event("change", { bubbles: true }));
+      }, firstFact.normalized_value);
+      await page.waitForFunction((completedCasePath) => state.coachRecommendation?.action_type === "ask" && state.coachRecommendation?.target?.case_path !== completedCasePath, firstFact.case_path);
+      const nextCoach = await page.evaluate(() => ({ tab: state.coachTab, action: state.coachRecommendation.action_type, question: state.coachRecommendation.information.question, target: state.coachRecommendation.target.case_path }));
+      assert.equal(nextCoach.tab, "coach", `${scenario.id} hid the next question after the learner entered the answer`);
+      assert.equal(nextCoach.action, "ask");
+      assert.ok(nextCoach.question, `${scenario.id} did not provide the next interview question automatically`);
       result.first_fact = firstFact.fact_id;
       result.coach_auto_focused = located;
+      result.coach_auto_revealed = true;
       result.enter_destination = enterCoach.target.case_path;
+      result.next_question_after_entry = nextCoach.question;
     } else if (index < 4) {
       assert.equal(initialCoach.action_type, "handoff");
       const transition = scenario.route.allowed_handoffs[0];
@@ -114,7 +126,8 @@ let browser;
   await page.evaluate(() => selectScenario(0));
   const mobile = await page.evaluate(() => ({ body_width: document.body.scrollWidth, viewport_width: window.innerWidth }));
   assert.ok(mobile.body_width <= mobile.viewport_width, `Mobile overflow: ${JSON.stringify(mobile)}`);
-  await page.goto(`${baseURL}?humeChatQA=1`, { waitUntil: "networkidle" });
+  await page.goto(`${baseURL}?scenario=BO-002&humeChatQA=1`, { waitUntil: "networkidle" });
+  assert.equal(await page.evaluate(() => getScenario().id), "BO-002", "Scenario deep link did not lock the browser session to the requested case");
   assert.equal(await page.locator("#humeChatQaPanel").getAttribute("hidden"), null, "Developer text-QA mode did not expose the Hume chat panel");
   assert.deepEqual(errors, []);
 

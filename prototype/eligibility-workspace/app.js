@@ -1611,6 +1611,7 @@ function recordConversationFact(fact, response, { source = "authored_caller_brie
   };
   state.conversationFactEvents.unshift(factEvent);
   addEvent("voice", `Client disclosed: ${factEvent.label}`, { target: `fact:${factId}`, after: response, sequenceStatus: source, citation: `${NOTEBOOK_ID} · authored interview facts` });
+  if (state.mode === "practice") setCoachTab("coach");
   if (focus && factEvent.case_path) window.setTimeout(() => focusConversationFactDestination(factEvent), 180);
   return factEvent;
 }
@@ -2279,6 +2280,7 @@ function handleIntegratedCaseChange({ path, label, before, after, material, rere
     syncFooter();
     renderCoachGuidance();
   }
+  if (state.mode === "practice" && state.coachRecommendation) setCoachTab("coach");
 }
 
 function handleIntegratedRepeat({ type, action }) {
@@ -3374,6 +3376,7 @@ async function authorizeHumeCaseResponse(message) {
       disclosed_at: new Date().toISOString(),
     };
     state.conversationFactEvents.unshift(factEvent);
+    if (state.mode === "practice") setCoachTab("coach");
     if (state.mode === "practice" && state.guidedFollow && factEvent.case_path) window.setTimeout(() => focusConversationFactDestination(factEvent), 450);
   }
   if (result.authorized) state.humeSession.pendingFactIds = [...new Set([...(state.humeSession.pendingFactIds || []), ...(result.fact_ids || [])])];
@@ -3536,9 +3539,24 @@ function renderScenarioLibrary() {
   });
 }
 
-function selectScenario(index) {
+function syncScenarioUrl(scenario) {
+  if (!scenario || !window.history?.replaceState) return;
+  const url = new URL(window.location.href);
+  url.searchParams.set("scenario", scenario.id);
+  window.history.replaceState(window.history.state, "", url);
+}
+
+function scenarioIndexFromUrl() {
+  const requested = new URLSearchParams(window.location.search).get("scenario");
+  if (!requested) return -1;
+  const normalized = requested.trim().toLowerCase();
+  return scenarios.findIndex((scenario) => [scenario.id, scenario.caseId, scenario.number].filter(Boolean).some((value) => String(value).toLowerCase() === normalized));
+}
+
+function selectScenario(index, { syncUrl = true } = {}) {
   state.scenarioIndex = index;
   const scenario = getScenario();
+  if (syncUrl) syncScenarioUrl(scenario);
   state.caseStartingState = buildCaseStartingState(scenario);
   state.activeScreen = "intake";
   state.callPhase = "preflight";
@@ -4523,6 +4541,11 @@ function startTimer() {
 }
 
 function init() {
+  const requestedScenarioIndex = scenarioIndexFromUrl();
+  if (requestedScenarioIndex >= 0) {
+    state.scenarioIndex = requestedScenarioIndex;
+    state.caseDraft = BenefitConnectIntegrated.clone(getScenario().integratedCase);
+  }
   state.screenPack = createDemoScreenPack();
   state.caseStartingState = buildCaseStartingState(getScenario());
   initializeCallerAffect("scenario_assignment");

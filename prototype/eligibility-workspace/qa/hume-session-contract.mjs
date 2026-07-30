@@ -67,6 +67,8 @@ assert.match(initial.system_prompt, /You are Jordan Ortiz/);
 assert.match(initial.system_prompt, /one to three sentences/i);
 assert.match(initial.system_prompt, /not in the application/i);
 assert.match(initial.system_prompt, /do not give one-word answers to exploratory questions/i);
+assert.match(initial.system_prompt, /stop and let the learner lead the interview/i);
+assert.match(initial.system_prompt, /do not routinely append questions or offers/i);
 assert.equal(initial.turn_policy.end_of_turn_silence_ms, 2000);
 assert.equal(initial.turn_policy.min_interruption_ms, 1200);
 assert.equal(initial.caller_brief_version, "demo-caller-brief-v2");
