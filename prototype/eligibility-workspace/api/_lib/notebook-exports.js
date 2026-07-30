@@ -1,4 +1,4 @@
-import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
+import { Document, HeadingLevel, ImageRun, Packer, Paragraph, TextRun } from "docx";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { createRequire } from "node:module";
 
@@ -46,17 +46,40 @@ function srtTime(seconds) {
   return `${h}:${m}:${s},000`;
 }
 
+async function renderCroppedImage(image, width = 1200, height = 675) {
+  if (!image?.url?.startsWith("data:image/")) return null;
+  const { createCanvas, loadImage } = await import("@napi-rs/canvas");
+  const source = await loadImage(image.url);
+  const crop = image.crop || {};
+  const fit = crop.fit === "contain" ? "contain" : "cover";
+  const zoom = Math.max(1, Math.min(3, Number(crop.zoom || 1)));
+  const positionX = Math.max(0, Math.min(100, Number(crop.x ?? 50))) / 100;
+  const positionY = Math.max(0, Math.min(100, Number(crop.y ?? 50))) / 100;
+  const baseScale = fit === "contain" ? Math.min(width / source.width, height / source.height) : Math.max(width / source.width, height / source.height);
+  const scale = baseScale * zoom;
+  const drawWidth = source.width * scale;
+  const drawHeight = source.height * scale;
+  const canvas = createCanvas(width, height);
+  const context = canvas.getContext("2d");
+  context.fillStyle = "#eef3f4";
+  context.fillRect(0, 0, width, height);
+  context.drawImage(source, (width - drawWidth) * positionX, (height - drawHeight) * positionY, drawWidth, drawHeight);
+  return canvas.toBuffer("image/png");
+}
+
 async function jobAidDocx(notebook, project) {
   const children = [
     new Paragraph({ text: notebook.title, heading: HeadingLevel.TITLE }),
     new Paragraph({ children: [new TextRun({ text: notebook.purpose || "", italics: true, color: "52666D" })] }),
-    ...project.sections.flatMap((section) => [
-      new Paragraph({ text: section.title, heading: HeadingLevel.HEADING_1 }),
-      ...String(section.body || "").split("\n").filter(Boolean).map((text) => new Paragraph({ text, spacing: { after: 140 } })),
-      ...(section.image?.caption ? [new Paragraph({ children: [new TextRun({ text: `Image: ${section.image.caption}`, italics: true })] })] : []),
-    ]),
-    new Paragraph({ text: `Grounded in approved content brief v${project.brief_version}.`, spacing: { before: 280 }, style: "Caption" }),
   ];
+  for (const section of project.sections) {
+    children.push(new Paragraph({ text: section.title, heading: HeadingLevel.HEADING_1 }));
+    children.push(...String(section.body || "").split("\n").filter(Boolean).map((text) => new Paragraph({ text, spacing: { after: 140 } })));
+    const image = await renderCroppedImage(section.image, 1120, 630);
+    if (image) children.push(new Paragraph({ children: [new ImageRun({ type: "png", data: image, transformation: { width: 560, height: 315 }, altText: { title: section.image.alt_text || section.image.title || "Supporting image", description: section.image.alt_text || "Supporting image", name: section.image.title || "Notebook image" } })] }));
+    if (section.image?.caption) children.push(new Paragraph({ children: [new TextRun({ text: section.image.caption, italics: true, color: "52666D" })] }));
+  }
+  children.push(new Paragraph({ text: `Grounded in approved content brief v${project.brief_version}.`, spacing: { before: 280 }, style: "Caption" }));
   const doc = new Document({ creator: "BlueOrigin Knowledge Studio", title: project.title, description: notebook.purpose, sections: [{ properties: {}, children }] });
   return Packer.toBuffer(doc);
 }
@@ -76,7 +99,18 @@ async function jobAidPdf(notebook, project) {
   add("BLUEORIGIN · JOB AID", { size: 9, font: bold, color: rgb(1, .35, .12), gap: 8 });
   add(notebook.title, { size: 25, font: bold, gap: 8 });
   add(notebook.purpose, { size: 12, color: rgb(.32, .4, .42), gap: 8 }); y -= 18;
-  for (const section of project.sections) { add(section.title, { size: 15, font: bold, gap: 7 }); add(section.body, { size: 10, gap: 5 }); y -= 14; }
+  for (const section of project.sections) {
+    add(section.title, { size: 15, font: bold, gap: 7 }); add(section.body, { size: 10, gap: 5 }); y -= 14;
+    const image = await renderCroppedImage(section.image, 1008, 504);
+    if (image) {
+      if (y < 320) { page = pdf.addPage([612, 792]); y = 735; }
+      const embedded = await pdf.embedPng(image);
+      page.drawImage(embedded, { x: 54, y: y - 252, width: 504, height: 252 });
+      y -= 266;
+      if (section.image.caption) add(section.image.caption, { size: 8, color: rgb(.35, .42, .44), gap: 6 });
+      y -= 10;
+    }
+  }
   add(`Grounded in approved content brief v${project.brief_version}.`, { size: 8, color: rgb(.35, .42, .44) });
   return Buffer.from(await pdf.save());
 }
@@ -91,18 +125,19 @@ async function presentationPptx(notebook, project) {
   pptx.company = "BlueOrigin";
   pptx.lang = "en-US";
   pptx.theme = { headFontFace: "Aptos Display", bodyFontFace: "Aptos", lang: "en-US" };
-  project.slides.forEach((item, index) => {
+  for (const [index, item] of project.slides.entries()) {
     const slide = pptx.addSlide();
     slide.background = { color: index === 0 ? "17343C" : "F4F7F7" };
     slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: .12, h: 7.5, fill: { color: "FF5D27" }, line: { color: "FF5D27" } });
     slide.addText("BLUEORIGIN", { x: .55, y: .36, w: 2, h: .3, fontSize: 9, bold: true, color: index === 0 ? "DDE9EB" : "385F68", charSpacing: 1.6, margin: 0 });
     slide.addText(item.title || `Slide ${index + 1}`, { x: .65, y: index === 0 ? 2.15 : 1.05, w: item.image ? 6.3 : 11.6, h: 1.4, fontSize: index === 0 ? 30 : 25, bold: true, color: index === 0 ? "FFFFFF" : "17343C", breakLine: false, margin: 0, valign: "mid" });
     slide.addText(item.body || "", { x: .65, y: index === 0 ? 3.65 : 2.65, w: item.image ? 6.2 : 11.4, h: 2.15, fontSize: 15, color: index === 0 ? "DDE9EB" : "52666D", breakLine: false, margin: 0, valign: "top" });
-    if (item.image?.url?.startsWith("data:image/")) slide.addImage({ data: item.image.url, x: 7.65, y: .7, w: 5.1, h: 6.1, sizing: "cover" });
+    const croppedImage = await renderCroppedImage(item.image, 1020, 1220);
+    if (croppedImage) slide.addImage({ data: `data:image/png;base64,${croppedImage.toString("base64")}`, x: 7.65, y: .7, w: 5.1, h: 6.1 });
     else if (item.image) slide.addShape(pptx.ShapeType.rect, { x: 7.65, y: .7, w: 5.1, h: 6.1, fill: { color: "D6E2E4" }, line: { color: "9FB6BB" } });
     slide.addText(`${index + 1}  ·  Brief v${project.brief_version}`, { x: .65, y: 7.06, w: 3, h: .2, fontSize: 8, color: index === 0 ? "B8CDD1" : "6D7B80", margin: 0 });
     if (item.notes) slide.addNotes(item.notes);
-  });
+  }
   return Buffer.from(await pptx.write({ outputType: "nodebuffer" }));
 }
 

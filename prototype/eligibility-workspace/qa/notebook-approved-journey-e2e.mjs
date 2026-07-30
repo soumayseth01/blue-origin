@@ -3,11 +3,19 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium } from "playwright";
 import assert from "node:assert/strict";
+import { createCanvas } from "@napi-rs/canvas";
 
 const port = Number(process.env.QA_PORT || 3024);
 const baseURL = process.env.QA_BASE_URL || `http://127.0.0.1:${port}`;
 const evidenceDir = resolve("qa/evidence/notebook-approved-journey");
 await mkdir(evidenceDir, { recursive: true });
+const imagePath = resolve(evidenceDir, "notebook-qa-image.png");
+const imageCanvas = createCanvas(960, 540);
+const imageContext = imageCanvas.getContext("2d");
+imageContext.fillStyle = "#17343c"; imageContext.fillRect(0, 0, 960, 540);
+imageContext.fillStyle = "#ff5d27"; imageContext.fillRect(520, 0, 440, 540);
+imageContext.fillStyle = "#ffffff"; imageContext.font = "bold 54px sans-serif"; imageContext.fillText("Grounded guidance", 60, 260);
+await writeFile(imagePath, imageCanvas.toBuffer("image/png"));
 
 let server = null;
 if (!process.env.QA_BASE_URL) {
@@ -88,6 +96,10 @@ try {
 
   await page.locator('[data-nj-action="generate-summary"]').click();
   await page.getByText("Grounded in selected documents", { exact: true }).waitFor({ timeout: 90000 });
+  await page.locator("#njChatInput").fill("What should an eligibility worker document after a household reports a change?");
+  await page.locator("#njChatForm").evaluate((form) => form.requestSubmit());
+  await page.locator('[data-nj-action^="add-chat-point:"]').waitFor({ timeout: 90000 });
+  await page.locator('[data-nj-action^="add-chat-point:"]').click();
   await shot(5, "source-summary-chat");
 
   await page.locator('[data-nj-action="brief"]').click();
@@ -106,6 +118,18 @@ try {
   await page.locator('[data-nj-open-output="job_aid"]').click();
   await shot(10, "job-aid-editor");
 
+  const initialSections = await page.locator(".nj-outlineitem").count();
+  await page.locator('[data-nj-action="add-section"]').click();
+  await page.waitForFunction((count) => document.querySelectorAll(".nj-outlineitem").length === count + 1, initialSections);
+  await page.locator('.nj-outlineitem.on [data-nj-item-op="duplicate"]').click();
+  await page.waitForFunction((count) => document.querySelectorAll(".nj-outlineitem").length === count + 2, initialSections);
+  await page.locator('.nj-outlineitem.on [data-nj-item-op="up"]').click();
+  await page.locator('.nj-outlineitem.on [data-nj-item-op="down"]').click();
+  await page.locator('.nj-outlineitem.on [data-nj-item-op="delete"]').click();
+  await page.waitForFunction(() => state.notebookJourney.saveStatus === "saved");
+  const afterSectionCrud = await json(await context.request.get(`${baseURL}/api/studio/notebooks/${notebookId}`));
+  assert.equal(afterSectionCrud.artifact_projects.job_aid.sections.length, initialSections + 1);
+
   await download("export-job", ".docx");
   const pdfResponse = await context.request.get(`${baseURL}/api/studio/notebooks/${notebookId}/exports/pdf`);
   assert.equal(pdfResponse.status(), 200); results.downloads[".pdf"] = { bytes: (await pdfResponse.body()).length };
@@ -114,8 +138,28 @@ try {
   await page.locator('[data-nj-open-output="presentation"]').click();
   await shot(11, "presentation-editor");
   await page.locator('[data-nj-action="assets"]').first().click();
+  await page.locator("[data-nj-upload]").setInputFiles(imagePath);
+  await page.locator('.nj-assetgrid [data-nj-asset-id]').waitFor();
+  await page.locator("#njAssetCaption").fill("Worker-facing grounded guidance visual.");
+  await page.locator("#njAssetAlt").fill("Blue and orange graphic labeled Grounded guidance.");
+  await page.locator('[data-nj-crop="zoom"]').evaluate((input) => { input.value = "1.4"; input.dispatchEvent(new Event("input", { bubbles: true })); });
+  await page.locator('[data-nj-crop="x"]').evaluate((input) => { input.value = "70"; input.dispatchEvent(new Event("input", { bubbles: true })); });
   await shot(12, "image-asset-drawer", ".nj-assetdrawer");
-  await page.locator('.nj-assetdrawer [data-nj-action="close-modal"]').click();
+  await page.locator('[data-nj-action^="use-asset:presentation:"]').click();
+  await page.waitForFunction(() => state.notebookJourney.modal === null);
+  const afterImageUse = await json(await context.request.get(`${baseURL}/api/studio/notebooks/${notebookId}`));
+  assert.equal(afterImageUse.artifact_projects.presentation.slides[0].image.crop.zoom, 1.4);
+  assert.equal(afterImageUse.artifact_projects.presentation.slides[0].image.crop.x, 70);
+  await page.reload({ waitUntil: "networkidle" });
+  if (await page.locator('[data-nj-open-output="presentation"]').count()) await page.locator('[data-nj-open-output="presentation"]').click();
+  if (!(await page.locator(".nj-slideimage img").count())) {
+    await page.locator('[data-view="notebook"]').first().click();
+    await page.locator(`[data-open-notebook-id="${notebookId}"]`).first().click();
+    if (await page.locator('[data-nj-open-output="presentation"]').count()) await page.locator('[data-nj-open-output="presentation"]').click();
+  }
+  await page.locator(".nj-slideimage img").waitFor();
+  const persistedImage = await page.locator(".nj-slideimage img").getAttribute("style");
+  assert.match(persistedImage, /scale\(1\.4\)/);
   await download("export-presentation", ".pptx");
   await page.locator('[data-nj-action="approve-presentation"]').click();
   await page.getByText(/Synced with approved deck v1/).waitFor();
@@ -125,6 +169,7 @@ try {
   await page.locator('[data-nj-open-output="quiz"]').click();
   await shot(13, "knowledge-check-editor");
   await page.locator('[data-nj-action="approve-quiz"]').click();
+  await page.getByText(/All changes saved|Ready to approve/).first().waitFor().catch(()=>{});
   await download("export-quiz", ".html");
   const quizJson = await context.request.get(`${baseURL}/api/studio/notebooks/${notebookId}/exports/quiz-json`);
   assert.equal(quizJson.status(), 200); results.downloads["quiz.json"] = { bytes: (await quizJson.body()).length };
@@ -150,6 +195,8 @@ try {
     await shot(15, "release-review-publish");
     await page.locator('[data-nj-action="publish-release"]').first().click();
     await page.getByText(/Published release/).waitFor({ timeout: 30000 });
+    await page.locator("#njReviewDate").fill(new Date(Date.now()+210*86400000).toISOString().slice(0,10));
+    await page.locator('[data-nj-action="schedule-review"]').click();
     const srt = await context.request.get(`${baseURL}/api/studio/notebooks/${notebookId}/exports/srt`);
     assert.equal(srt.status(), 200); results.downloads[".srt"] = { bytes: (await srt.body()).length };
   } else results.screens[15] = { skipped: "HeyGen integration not configured" };
@@ -165,10 +212,14 @@ try {
     outputs: Object.keys(persisted.artifact_projects || {}),
     releases: persisted.artifact_releases?.length || 0,
     video_url: persisted.artifact_projects?.video?.download_url || null,
+    review_due_at: persisted.review_due_at,
+    editor_crud: true,
+    image_crop_reload: true,
   };
   assert.equal(persisted.content_brief.status, "approved");
   assert.deepEqual(Object.keys(persisted.artifact_projects).sort(), ["job_aid", "presentation", "quiz", "video"]);
   assert.ok(results.downloads[".docx"] && results.downloads[".pptx"] && results.downloads[".html"]);
+  assert.ok(persisted.review_due_at, "Review schedule should persist");
   assert.deepEqual(errors, []);
   results.errors = errors;
   results.completed_at = new Date().toISOString();

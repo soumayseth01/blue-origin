@@ -484,6 +484,7 @@ export async function updateNotebookArtifacts(id, body = {}) {
   let releases = Array.isArray(current.artifact_releases) ? current.artifact_releases : [];
   let assets = Array.isArray(current.notebook_assets) ? current.notebook_assets : [];
   let stage = current.workflow_stage || "empty";
+  let reviewDueAt = current.review_due_at || null;
   if (action === "set_stage") {
     const allowed = new Set(["setup","empty","sources","summary","brief","studio","generating","outputs","release","published"]);
     if (!allowed.has(body.stage)) fail("Unsupported notebook stage", 422);
@@ -499,6 +500,9 @@ export async function updateNotebookArtifacts(id, body = {}) {
   } else if (action === "approve_presentation") {
     const presentation = projects.presentation;
     if (!presentation) fail("Presentation draft required", 409);
+    const instructionalSlides = (presentation.slides || []).filter((slide, index) => index > 0 && slide.body);
+    if (!(presentation.slides || []).length || instructionalSlides.some((slide) => !(slide.citations || []).length)) fail("Every instructional slide must retain an approved citation", 409);
+    if ((presentation.slides || []).some((slide) => slide.image && (!slide.image.alt_text?.trim() || !slide.image.caption?.trim()))) fail("Every slide image requires a caption and alt text", 409);
     const version = Number(presentation.version || 0) + 1;
     const approvedAt = new Date().toISOString();
     const approved = { ...presentation, status: "approved", version, approved_at: approvedAt };
@@ -506,19 +510,32 @@ export async function updateNotebookArtifacts(id, body = {}) {
     projects = { ...projects, presentation: approved, video: { ...approved, project_id: `video:${crypto.randomUUID()}`, format: "video", title: `${current.title} — Video from Presentation v${version}`, status: "draft", derived_from: { project_id: approved.project_id, version, approved_at: approvedAt }, scenes, selected_scene_id: scenes[0]?.id || null } };
     stage = "outputs";
   } else if (action === "add_asset") {
-    const asset = { id: `asset:${crypto.randomUUID()}`, title: String(body.asset?.title || "Uploaded image"), source: body.asset?.source || "upload", url: body.asset?.url || null, caption: body.asset?.caption || "", alt_text: body.asset?.alt_text || "", crop: body.asset?.crop || { fit: "cover", zoom: 1 }, created_at: new Date().toISOString() };
+    const asset = { id: `asset:${crypto.randomUUID()}`, title: String(body.asset?.title || "Uploaded image"), source: body.asset?.source || "upload", url: body.asset?.url || null, caption: body.asset?.caption || "", alt_text: body.asset?.alt_text || "", crop: body.asset?.crop || { fit: "cover", zoom: 1, x: 50, y: 50 }, created_at: new Date().toISOString() };
     assets = [...assets, asset].slice(-100);
+  } else if (action === "schedule_review") {
+    const due = new Date(body.review_due_at || "");
+    if (!Number.isFinite(due.getTime()) || due.getTime() < Date.now() - 86_400_000) fail("Choose a future review date", 422);
+    reviewDueAt = due.toISOString();
   } else if (action === "publish_release") {
     const required = ["job_aid", "presentation", "quiz"];
     if (required.some((format) => !projects[format])) fail("Job aid, presentation, and knowledge check are required", 409);
+    if (required.some((format) => projects[format].brief_version !== current.content_brief?.version)) fail("Every output must use the current approved brief", 409);
     if (projects.presentation.status !== "approved") fail("Approve the presentation before publishing", 409);
+    if (projects.quiz.status !== "approved") fail("Approve the knowledge check before publishing", 409);
+    const citationItems = [...(projects.presentation.slides || []).filter((item, index) => index > 0 && item.body), ...(projects.quiz.questions || [])];
+    if (!citationItems.length || citationItems.some((item) => !(item.citations || []).length)) fail("Every instructional slide and quiz question must retain a citation", 409);
+    const visualItems = [...(projects.job_aid.sections || []), ...(projects.presentation.slides || [])].filter((item) => item.image);
+    if (visualItems.some((item) => !item.image.alt_text?.trim() || !item.image.caption?.trim())) fail("Every used image requires a caption and alt text", 409);
+    const quizValid = (projects.quiz.questions || []).length > 0 && projects.quiz.questions.every((question) => question.prompt && question.explanation && question.options?.length >= 2 && Number.isInteger(question.correct_index) && question.correct_index >= 0 && question.correct_index < question.options.length && (question.citations || []).length);
+    if (!quizValid) fail("Validate every quiz answer, explanation, and citation before publishing", 409);
     if (!projects.video) fail("Create the presentation-derived video before publishing", 409);
+    if (projects.video.derived_from?.project_id !== projects.presentation.project_id || projects.video.derived_from?.version !== projects.presentation.version) fail("Video must reference the currently approved presentation", 409);
     if (projects.video.status !== "ready" || !projects.video.download_url) fail("Complete the HeyGen video before publishing", 409);
     const release = { release_id: `release:${crypto.randomUUID()}`, version: releases.length + 1, title: current.title, brief_version: current.content_brief?.version || 0, presentation_version: projects.presentation.version, notes: String(body.notes || ""), status: "published", published_at: new Date().toISOString(), outputs: ["DOCX","PDF","PPTX","QUIZ_HTML","QUIZ_JSON","MP4","SRT"] };
     releases = [release, ...releases];
     stage = "published";
   } else fail("Unsupported artifact action", 422);
-  await sql`UPDATE notebooks SET workflow_stage=${stage},artifact_projects=${JSON.stringify(projects)}::jsonb,artifact_releases=${JSON.stringify(releases)}::jsonb,notebook_assets=${JSON.stringify(assets)}::jsonb,updated_at=now() WHERE notebook_id=${notebookId}`;
+  await sql`UPDATE notebooks SET workflow_stage=${stage},artifact_projects=${JSON.stringify(projects)}::jsonb,artifact_releases=${JSON.stringify(releases)}::jsonb,notebook_assets=${JSON.stringify(assets)}::jsonb,review_due_at=${reviewDueAt},updated_at=now() WHERE notebook_id=${notebookId}`;
   await event(sql, notebookId, `artifact.${action}`, actor.id, { stage, formats: Object.keys(projects) });
   return getNotebook(notebookId);
 }

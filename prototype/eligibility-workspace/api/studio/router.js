@@ -257,9 +257,10 @@ export default async function handler(req, res) {
     const route = parts.join("/");
     if (route === "integrations") {
       if (!allowMethod(req, res, "GET")) return;
-      const { notebookVideoHealth } = await import("../_lib/notebook-video.js");
+      const { notebookVideoHealth, notebookVideoOptions } = await import("../_lib/notebook-video.js");
       const video = await notebookVideoHealth();
-      return send(res, 200, { openai: Boolean(process.env.OPENAI_API_KEY), heygen: video.healthy, heygen_configured: video.configured, heygen_error: video.error, notebook: Boolean(process.env.OPEN_NOTEBOOK_API_URL), blob: Boolean(process.env.BLOB_READ_WRITE_TOKEN), worker: Boolean(process.env.ARTIFACT_WORKER_URL) });
+      const options = video.healthy ? await notebookVideoOptions().catch(()=>({ avatars: [], voices: [] })) : { avatars: [], voices: [] };
+      return send(res, 200, { openai: Boolean(process.env.OPENAI_API_KEY), heygen: video.healthy, heygen_configured: video.configured, heygen_error: video.error, heygen_avatars: options.avatars, heygen_voices: options.voices, notebook: Boolean(process.env.OPEN_NOTEBOOK_API_URL), blob: Boolean(process.env.BLOB_READ_WRITE_TOKEN), worker: Boolean(process.env.ARTIFACT_WORKER_URL) });
     }
     if (parts[0] === "notebooks") return await notebookRoute(req, res, parts);
     if (parts[0] === "library-sources") {
