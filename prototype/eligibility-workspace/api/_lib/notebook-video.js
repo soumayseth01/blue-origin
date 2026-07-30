@@ -11,14 +11,35 @@ function failure(message, statusCode = 502, details = null) {
 async function heygen(path, options = {}) {
   const key = process.env.HEYGEN_API_KEY;
   if (!key) failure("HeyGen is not configured for this deployment", 503);
-  const response = await fetch(`https://api.heygen.com${path}`, {
-    ...options,
-    headers: { accept: "application/json", "content-type": "application/json", "x-api-key": key, ...(options.headers || {}) },
-    signal: AbortSignal.timeout(25_000),
-  });
+  let response;
+  try {
+    response = await fetch(`https://api.heygen.com${path}`, {
+      ...options,
+      headers: { accept: "application/json", "content-type": "application/json", "x-api-key": key, ...(options.headers || {}) },
+      signal: AbortSignal.timeout(25_000),
+    });
+  } catch (error) {
+    failure(`HeyGen connection failed: ${error.message}`, 502);
+  }
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload.error) failure(payload.error?.message || payload.message || `HeyGen request failed (${response.status})`, response.status >= 400 && response.status < 500 ? 422 : 502, payload.error || payload);
   return payload.data || payload;
+}
+
+let healthCache = null;
+export async function notebookVideoHealth() {
+  if (!process.env.HEYGEN_API_KEY) return { configured: false, healthy: false, error: "Not configured" };
+  if (healthCache && Date.now() - healthCache.checkedAt < 300_000) return healthCache.value;
+  let value;
+  try {
+    const data = await heygen("/v2/avatars", { method: "GET" });
+    const count = (data.avatars || data.avatar_list || []).length;
+    value = count ? { configured: true, healthy: true, error: null } : { configured: true, healthy: false, error: "No usable avatars are available" };
+  } catch (error) {
+    value = { configured: true, healthy: false, error: error.message };
+  }
+  healthCache = { checkedAt: Date.now(), value };
+  return value;
 }
 
 async function presenterDefaults() {

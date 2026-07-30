@@ -513,6 +513,7 @@ export async function updateNotebookArtifacts(id, body = {}) {
     if (required.some((format) => !projects[format])) fail("Job aid, presentation, and knowledge check are required", 409);
     if (projects.presentation.status !== "approved") fail("Approve the presentation before publishing", 409);
     if (!projects.video) fail("Create the presentation-derived video before publishing", 409);
+    if (projects.video.status !== "ready" || !projects.video.download_url) fail("Complete the HeyGen video before publishing", 409);
     const release = { release_id: `release:${crypto.randomUUID()}`, version: releases.length + 1, title: current.title, brief_version: current.content_brief?.version || 0, presentation_version: projects.presentation.version, notes: String(body.notes || ""), status: "published", published_at: new Date().toISOString(), outputs: ["DOCX","PDF","PPTX","QUIZ_HTML","QUIZ_JSON","MP4","SRT"] };
     releases = [release, ...releases];
     stage = "published";
