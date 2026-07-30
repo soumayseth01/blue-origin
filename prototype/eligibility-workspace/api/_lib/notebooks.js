@@ -496,7 +496,7 @@ export async function updateNotebookArtifacts(id, body = {}) {
     const format = String(body.format || "");
     if (!new Set(["job_aid","presentation","quiz","video"]).has(format) || !body.project) fail("Valid artifact project required", 422);
     projects = { ...projects, [format]: { ...body.project, format, updated_at: new Date().toISOString() } };
-    stage = format === "video" ? "outputs" : stage;
+    stage = format === "video" && current.status !== "published" ? "outputs" : stage;
   } else if (action === "approve_presentation") {
     const presentation = projects.presentation;
     if (!presentation) fail("Presentation draft required", 409);
