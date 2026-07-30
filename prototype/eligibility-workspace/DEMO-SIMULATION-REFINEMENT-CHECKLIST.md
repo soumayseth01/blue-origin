@@ -28,6 +28,7 @@
 
 - [x] Use a neutral or name-only phone greeting without assuming the call purpose.
 - [x] Require one-to-three-sentence conversational answers for exploratory questions.
+- [x] End factual interview answers with a statement and let the learner lead; do not append repetitive “anything else?” questions.
 - [x] Prohibit “not in the application/payload/system” language.
 - [x] Permit natural hesitation, small talk, clarification, and “I don’t remember” responses.
 - [x] Prevent invention of material case facts.
@@ -39,6 +40,8 @@
 - [x] Show the next best question automatically in Practice mode.
 - [x] After a supported caller answer, show the normalized value and exact BenefitConnect destination.
 - [x] Automatically navigate, open the correct accordion, and focus the destination field.
+- [x] Reveal the Coach tab automatically after a supported caller answer and after the learner enters the mapped value.
+- [x] Advance the visible guidance to the next authored question without a hint or locate-button click.
 - [x] Advance to the next question after the learner enters the supported value.
 - [x] Guide handoff and unavailable-contact branches without requiring a hint-button click.
 - [x] Keep the coach hidden in Assessment mode.
