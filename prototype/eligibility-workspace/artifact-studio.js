@@ -265,7 +265,10 @@ async function studioJSON(path, options = {}) {
   let payload = null;
   try { payload = await response.json(); } catch { /* error body may not be JSON */ }
   if (!response.ok) {
-    const error = new Error(payload?.detail || `${response.status} ${response.statusText}`);
+    const fallback = response.status >= 500
+      ? "The workspace service could not complete this request. Your work is still here—please retry."
+      : `${response.status} ${response.statusText || "Request failed"}`;
+    const error = new Error(payload?.detail || fallback);
     error.details = payload?.details || null;
     error.status = response.status;
     throw error;

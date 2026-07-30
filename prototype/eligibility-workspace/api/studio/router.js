@@ -26,6 +26,7 @@ import {
   removeNotebookSource,
   setNotebookReview,
   updateNotebook,
+  updateNotebookArtifacts,
   updateNotebookContent,
 } from "../_lib/notebooks.js";
 
@@ -55,6 +56,9 @@ function routePath(req) {
     "notebook-analyze": ["notebooks", String(req.query.id || ""), "analyze"],
     "notebook-chat": ["notebooks", String(req.query.id || ""), "chat"],
     "notebook-content": ["notebooks", String(req.query.id || ""), "content"],
+    "notebook-artifacts": ["notebooks", String(req.query.id || ""), "artifacts"],
+    "notebook-export": ["notebooks", String(req.query.id || ""), "exports", String(req.query.format || "")],
+    "notebook-video": ["notebooks", String(req.query.id || ""), "video"],
     "notebook-review": ["notebooks", String(req.query.id || ""), "review"],
     "notebook-publish": ["notebooks", String(req.query.id || ""), "publish"],
     "notebook-archive": ["notebooks", String(req.query.id || ""), "archive"],
@@ -86,6 +90,19 @@ async function notebookRoute(req, res, parts) {
   } else if (action === "analyze" && req.method === "POST") return send(res, 200, await analyzeNotebook(id, requestBody(req)));
   else if (action === "chat" && req.method === "POST") return send(res, 200, await chatWithNotebook(id, requestBody(req)));
   else if (action === "content" && req.method === "PATCH") return send(res, 200, await updateNotebookContent(id, requestBody(req)));
+  else if (action === "artifacts" && req.method === "PATCH") return send(res, 200, await updateNotebookArtifacts(id, requestBody(req)));
+  else if (action === "exports" && req.method === "GET") {
+    const { buildNotebookExport, sendNotebookExport } = await import("../_lib/notebook-exports.js");
+    return sendNotebookExport(res, await buildNotebookExport(await getNotebook(id), parts[3]));
+  }
+  else if (action === "video" && req.method === "POST") {
+    const { startNotebookVideo } = await import("../_lib/notebook-video.js");
+    return send(res, 202, await startNotebookVideo(id));
+  }
+  else if (action === "video" && req.method === "GET") {
+    const { refreshNotebookVideo } = await import("../_lib/notebook-video.js");
+    return send(res, 200, await refreshNotebookVideo(id));
+  }
   else if (action === "review" && req.method === "POST") return send(res, 200, await setNotebookReview(id));
   else if (action === "publish" && req.method === "POST") return send(res, 200, await publishNotebook(id, requestBody(req)));
   else if (action === "archive" && req.method === "POST") return send(res, 200, await archiveNotebook(id));

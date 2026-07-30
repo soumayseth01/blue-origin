@@ -9,17 +9,20 @@
     "lighthouse:seed": "node scripts/seed-lighthouse.mjs",
     "library:import": "node scripts/import-library-documents.mjs",
     "hume:configure": "node scripts/configure-hume-natural-turns.mjs",
-    "check": "node --check app.js && node --check coach-engine.js && node --check demo-scenario-system.js && node --check hume-browser-runtime.js && node --check vendor-hume-evi.js && node --check artifact-studio.js && node --check eligibility-library.js && node --check integrated-case.js && node --check simulation-authoring.js && node --check scripts/configure-hume-natural-turns.mjs && find api -name '*.js' -print0 | xargs -0 -n1 node --check && node qa/demo-scenario-system-contract.mjs && node qa/coach-engine-contract.mjs && node qa/hume-session-contract.mjs && node qa/hume-config-resilience.mjs && node qa/hume-runtime-contract.mjs"
+    "check": "node --check app.js && node --check coach-engine.js && node --check demo-scenario-system.js && node --check hume-browser-runtime.js && node --check vendor-hume-evi.js && node --check artifact-studio.js && node --check notebook-journey.js && node --check eligibility-library.js && node --check integrated-case.js && node --check simulation-authoring.js && node --check scripts/configure-hume-natural-turns.mjs && find api -name '*.js' -print0 | xargs -0 -n1 node --check && node qa/demo-scenario-system-contract.mjs && node qa/coach-engine-contract.mjs && node qa/hume-session-contract.mjs && node qa/hume-config-resilience.mjs && node qa/hume-runtime-contract.mjs"
   },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.100",
     "@neondatabase/serverless": "^1.0.1",
     "@vercel/blob": "^2.0.0",
     "@vercel/functions": "^2.2.12",
+    "docx": "^9.7.1",
     "docx-preview": "^0.4.0",
     "hume": "0.16.0",
     "mammoth": "^1.12.0",
-    "pdf-parse": "^2.4.5"
+    "pdf-lib": "^1.17.1",
+    "pdf-parse": "^2.4.5",
+    "pptxgenjs": "^4.0.1"
   },
   "devDependencies": {
     "esbuild": "0.25.8",

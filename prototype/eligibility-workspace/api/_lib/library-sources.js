@@ -1,10 +1,5 @@
 import crypto from "node:crypto";
-import { DOMMatrix, ImageData, Path2D } from "@napi-rs/canvas";
 import { db } from "./db.js";
-
-globalThis.DOMMatrix ||= DOMMatrix;
-globalThis.ImageData ||= ImageData;
-globalThis.Path2D ||= Path2D;
 
 const MAX_DOCUMENT_BYTES = 30 * 1024 * 1024;
 const MAX_UPLOAD_CHUNK_BYTES = 2 * 1024 * 1024;
@@ -199,7 +194,14 @@ function safeFileName(source, contentType, url) {
 
 async function extractText(bytes, contentType) {
   if (contentType === "application/pdf") {
-    const [{ PDFParse }, { getData }] = await Promise.all([import("pdf-parse"), import("pdf-parse/worker")]);
+    const [{ DOMMatrix, ImageData, Path2D }, { PDFParse }, { getData }] = await Promise.all([
+      import("@napi-rs/canvas"),
+      import("pdf-parse"),
+      import("pdf-parse/worker"),
+    ]);
+    globalThis.DOMMatrix ||= DOMMatrix;
+    globalThis.ImageData ||= ImageData;
+    globalThis.Path2D ||= Path2D;
     PDFParse.setWorker(getData());
     const parser = new PDFParse({ data: new Uint8Array(bytes) });
     try {

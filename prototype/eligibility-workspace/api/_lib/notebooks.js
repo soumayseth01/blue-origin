@@ -88,6 +88,10 @@ function mapNotebook(row, sources = [], { includeContent = false } = {}) {
     last_opened_at: row.last_opened_at,
     source_count: Number(row.source_count ?? sources.length),
     artifact_count: Number(row.artifact_count || 0),
+    workflow_stage: row.workflow_stage || "setup",
+    artifact_projects: row.artifact_projects || {},
+    artifact_releases: Array.isArray(row.artifact_releases) ? row.artifact_releases : [],
+    notebook_assets: Array.isArray(row.notebook_assets) ? row.notebook_assets : [],
     source_ids: sources.map((source) => source.source_id),
     sources,
     published_release: publishedRelease,
@@ -435,6 +439,86 @@ export async function updateNotebookContent(id, body = {}) {
   } else fail("Unsupported notebook content action", 422);
   await sql`UPDATE notebooks SET content_brief=${JSON.stringify(contentBrief)}::jsonb,selected_output=${selectedOutput},updated_at=now() WHERE notebook_id=${notebookId}`;
   await event(sql, notebookId, `content.${action}`, actor.id, { output: selectedOutput, point_count: contentBrief.points.length, version: contentBrief.version });
+  return getNotebook(notebookId);
+}
+
+function projectTitle(notebook, suffix) {
+  return `${notebook.title || "Untitled notebook"} — ${suffix}`;
+}
+
+function draftProjects(notebook) {
+  const brief = { ...EMPTY_BRIEF, ...(notebook.content_brief || {}), points: notebook.content_brief?.points || [] };
+  if (brief.status !== "approved") fail("Finalize the content brief before creating outputs", 409);
+  const statements = brief.points.map((point) => point.statement);
+  const citations = brief.points.flatMap((point) => point.citations || []);
+  const base = { notebook_id: notebook.notebook_id, brief_version: brief.version, source_ids: brief.approved_snapshot?.source_ids || [], status: "draft", updated_at: new Date().toISOString() };
+  const sections = [
+    { id: "overview", title: "Overview", body: notebook.purpose || statements[0] || "", layout: "text" },
+    ...statements.slice(0, 5).map((statement, index) => ({ id: `section-${index + 1}`, title: ["What workers need to know", "Required action", "Verification", "Exceptions", "Worker checklist"][index] || `Guidance ${index + 1}`, body: statement, layout: index === 1 ? "text_image" : "text", image: null })),
+    { id: "sources", title: "Sources", body: citations.map((citation) => citation.label).filter(Boolean).join("\n"), layout: "sources" },
+  ];
+  const slides = [
+    { id: "slide-1", title: notebook.title, body: notebook.purpose, layout: "title", notes: "Welcome learners and introduce the objective.", image: null, presenter_area: "right", citations: [] },
+    ...statements.slice(0, 6).map((statement, index) => ({ id: `slide-${index + 2}`, title: ["What matters", "Required action", "Verification", "Exceptions", "Documentation", "Summary"][index] || `Key point ${index + 1}`, body: statement, layout: "statement_image_right", notes: statement, image: null, presenter_area: "right", citations: brief.points[index]?.citations || [] })),
+  ];
+  const questions = statements.slice(0, Math.min(8, Math.max(3, statements.length))).map((statement, index) => ({
+    id: `question-${index + 1}`, type: "multiple_choice", difficulty: "applied", points: 1, shuffle: true,
+    prompt: `Which response best reflects the approved guidance about ${["the requirement", "the required action", "verification", "exceptions"][index % 4]}?`,
+    options: [statement, "Apply the same rule to every program without checking the source.", "Wait until the next scheduled review before documenting the change.", "Skip verification and close the case immediately."],
+    correct_index: 0, explanation: statement, citations: brief.points[index]?.citations || [],
+  }));
+  return {
+    job_aid: { ...base, project_id: `job-aid:${crypto.randomUUID()}`, format: "job_aid", title: projectTitle(notebook, "Quick reference"), sections, selected_section_id: sections[1]?.id || "overview" },
+    presentation: { ...base, project_id: `presentation:${crypto.randomUUID()}`, format: "presentation", title: projectTitle(notebook, "Guided process"), version: 0, slides, selected_slide_id: slides[0].id },
+    quiz: { ...base, project_id: `quiz:${crypto.randomUUID()}`, format: "quiz", title: projectTitle(notebook, "Knowledge check"), questions, selected_question_id: questions[0]?.id || null },
+  };
+}
+
+export async function updateNotebookArtifacts(id, body = {}) {
+  const sql = db();
+  const actor = studioActor();
+  const notebookId = uuid(id);
+  const current = await getRow(sql, notebookId);
+  const action = String(body.action || "");
+  let projects = current.artifact_projects || {};
+  let releases = Array.isArray(current.artifact_releases) ? current.artifact_releases : [];
+  let assets = Array.isArray(current.notebook_assets) ? current.notebook_assets : [];
+  let stage = current.workflow_stage || "empty";
+  if (action === "set_stage") {
+    const allowed = new Set(["setup","empty","sources","summary","brief","studio","generating","outputs","release","published"]);
+    if (!allowed.has(body.stage)) fail("Unsupported notebook stage", 422);
+    stage = body.stage;
+  } else if (action === "generate_drafts") {
+    projects = draftProjects(current);
+    stage = "outputs";
+  } else if (action === "save_project") {
+    const format = String(body.format || "");
+    if (!new Set(["job_aid","presentation","quiz","video"]).has(format) || !body.project) fail("Valid artifact project required", 422);
+    projects = { ...projects, [format]: { ...body.project, format, updated_at: new Date().toISOString() } };
+    stage = format === "video" ? "outputs" : stage;
+  } else if (action === "approve_presentation") {
+    const presentation = projects.presentation;
+    if (!presentation) fail("Presentation draft required", 409);
+    const version = Number(presentation.version || 0) + 1;
+    const approvedAt = new Date().toISOString();
+    const approved = { ...presentation, status: "approved", version, approved_at: approvedAt };
+    const scenes = (approved.slides || []).map((slide, index) => ({ id: `scene-${index + 1}`, slide_id: slide.id, title: slide.title, body: slide.body, image: slide.image || null, citations: slide.citations || [], narration: slide.notes || slide.body || "", duration_seconds: 28, avatar_enabled: index > 0, avatar_id: "adriana-professional", avatar_position: slide.presenter_area || "right", voice_id: "warm-professional-us", captions_enabled: true, status: "draft" }));
+    projects = { ...projects, presentation: approved, video: { ...approved, project_id: `video:${crypto.randomUUID()}`, format: "video", title: `${current.title} — Video from Presentation v${version}`, status: "draft", derived_from: { project_id: approved.project_id, version, approved_at: approvedAt }, scenes, selected_scene_id: scenes[0]?.id || null } };
+    stage = "outputs";
+  } else if (action === "add_asset") {
+    const asset = { id: `asset:${crypto.randomUUID()}`, title: String(body.asset?.title || "Uploaded image"), source: body.asset?.source || "upload", url: body.asset?.url || null, caption: body.asset?.caption || "", alt_text: body.asset?.alt_text || "", crop: body.asset?.crop || { fit: "cover", zoom: 1 }, created_at: new Date().toISOString() };
+    assets = [...assets, asset].slice(-100);
+  } else if (action === "publish_release") {
+    const required = ["job_aid", "presentation", "quiz"];
+    if (required.some((format) => !projects[format])) fail("Job aid, presentation, and knowledge check are required", 409);
+    if (projects.presentation.status !== "approved") fail("Approve the presentation before publishing", 409);
+    if (!projects.video) fail("Create the presentation-derived video before publishing", 409);
+    const release = { release_id: `release:${crypto.randomUUID()}`, version: releases.length + 1, title: current.title, brief_version: current.content_brief?.version || 0, presentation_version: projects.presentation.version, notes: String(body.notes || ""), status: "published", published_at: new Date().toISOString(), outputs: ["DOCX","PDF","PPTX","QUIZ_HTML","QUIZ_JSON","MP4","SRT"] };
+    releases = [release, ...releases];
+    stage = "published";
+  } else fail("Unsupported artifact action", 422);
+  await sql`UPDATE notebooks SET workflow_stage=${stage},artifact_projects=${JSON.stringify(projects)}::jsonb,artifact_releases=${JSON.stringify(releases)}::jsonb,notebook_assets=${JSON.stringify(assets)}::jsonb,updated_at=now() WHERE notebook_id=${notebookId}`;
+  await event(sql, notebookId, `artifact.${action}`, actor.id, { stage, formats: Object.keys(projects) });
   return getNotebook(notebookId);
 }
 
