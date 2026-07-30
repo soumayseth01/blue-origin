@@ -1,0 +1,31 @@
+{
+  "bridgeVersion": "3.6",
+  "kind": "google-docs-trusted-read-receipt",
+  "status": "complete",
+  "target": {
+    "documentId": "1hkFAG6hgpGrSij1QMVwHMDksLTg7ccd_8CIADAXfvnU",
+    "title": "QC Platform — Engineering Team Working Document",
+    "revisionId": "AIroW346yAE42N1XdiSxPJ3pmqkTPIXSR4NhNStK-CuG4i1oQCe6cFYO94jIu-e4FA3ookvHQzGKOQVw9TzJ1FLVRz_Et4HqQFt4oDIafEQ",
+    "documentUrl": "https://docs.google.com/document/d/1hkFAG6hgpGrSij1QMVwHMDksLTg7ccd_8CIADAXfvnU",
+    "selectedTabId": null
+  },
+  "dropdownMetadata": {
+    "status": "unavailable",
+    "resolvedTool": null,
+    "authoritative": false,
+    "count": 0
+  },
+  "controlAwareness": {
+    "hasProtectedControls": false,
+    "authoritativeDropdownCount": 0,
+    "opaqueControlCount": 0,
+    "affectedParagraphCount": 0,
+    "nativeElementCounts": {
+      "dateElement": 3
+    },
+    "preservationRequired": false,
+    "recommendedBehavior": "No protected controls were detected in the scanned scope."
+  },
+  "warnings": [],
+  "error": null
+}

@@ -1,0 +1,10 @@
+.hume-config.json
+.hume-config-*.json
+server.py
+qa/
+design-qa.md
+__pycache__/
+.env*
+FAA-*.pdf
+AZ-CNAP-Manual-Customer-Home.*
+AZ-How-to-Apply-Nutrition-Assistance.pdf

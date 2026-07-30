@@ -1,0 +1,57 @@
+{
+  "bridgeVersion": "3.6",
+  "kind": "google-docs-trusted-read",
+  "status": "complete",
+  "outputDir": "/Users/soumayseth/Documents/BlueOrigin/bridge/trusted-read-salary-edit-3",
+  "target": {
+    "documentId": "15YjipX00FMceUiwJsKc3CpHb22CFxopoHAKH5jmvQ0s",
+    "title": "HSG NewCo — Founding CEO Alignment Memo",
+    "revisionId": "AIroW37FH5oYVyhG6dk6GuSR6ix60gEPvG9crr8kymMrxl_ICIsHd4kFiocYCHT3yg-CDZwiRCXj_BnyX5S8ewpMM8CC5H5jU7Dn7odZFc8",
+    "documentUrl": "https://docs.google.com/document/d/15YjipX00FMceUiwJsKc3CpHb22CFxopoHAKH5jmvQ0s",
+    "selectedTabId": "t.0"
+  },
+  "dropdownMetadata": {
+    "status": "unavailable",
+    "resolvedTool": null,
+    "authoritative": false,
+    "count": 0
+  },
+  "controlAwareness": {
+    "hasProtectedControls": false,
+    "authoritativeDropdownCount": 0,
+    "opaqueControlCount": 0,
+    "affectedParagraphCount": 0,
+    "nativeElementCounts": {},
+    "preservationRequired": false,
+    "recommendedBehavior": "No protected controls were detected in the scanned scope."
+  },
+  "warnings": [],
+  "files": {
+    "document_result": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/trusted-read-salary-edit-3/document-result.json",
+      "bytes": 619974,
+      "sha256": "be2661a3517cd1dd31cf9802533a03be472253a5aeff4b2c9f9a753067ce2243"
+    },
+    "control_inventory": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/trusted-read-salary-edit-3/control-inventory.json",
+      "bytes": 1047,
+      "sha256": "7cd0d3ab6453ade7042d373bff9263e1ae02af88e73b7c23d53db3e12f41552c"
+    },
+    "document_outline": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/trusted-read-salary-edit-3/document-outline.json",
+      "bytes": 83170,
+      "sha256": "fa76c7bef2a6e4390292bb2720f1aaf957a4f69ebc88cd8406971fc4e85bafe2"
+    },
+    "document_text": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/trusted-read-salary-edit-3/document-text.md",
+      "bytes": 16022,
+      "sha256": "11afa30b3e81a236c2edd2fd65a64ad3ac00061198eb379c2a7c5e2028cb444f"
+    },
+    "receipt": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/trusted-read-salary-edit-3/receipt.json",
+      "bytes": 978,
+      "sha256": "054ce032a6b66a24dc4f40d81593e64d5a98c976766a46f18ecaf364877a25a2"
+    }
+  },
+  "error": null
+}

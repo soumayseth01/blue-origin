@@ -1,0 +1,59 @@
+{
+  "bridgeVersion": "3.6",
+  "kind": "google-docs-trusted-read",
+  "status": "complete",
+  "outputDir": "/Users/soumayseth/Documents/BlueOrigin/bridge/qc-author-cleanup-20260728-v2",
+  "target": {
+    "documentId": "1hkFAG6hgpGrSij1QMVwHMDksLTg7ccd_8CIADAXfvnU",
+    "title": "QC Platform — Engineering Team Working Document",
+    "revisionId": "AIroW367SI_nhmYG4OYFmOxPzJLuCJ2D9VkMVCkpuBYU3k-LUVZHIlm4IMen42kZOy4BQP6tE5pU4luDJR3JeBrYD1bDZoMyoGavkl7Ojr4",
+    "documentUrl": "https://docs.google.com/document/d/1hkFAG6hgpGrSij1QMVwHMDksLTg7ccd_8CIADAXfvnU",
+    "selectedTabId": null
+  },
+  "dropdownMetadata": {
+    "status": "unavailable",
+    "resolvedTool": null,
+    "authoritative": false,
+    "count": 0
+  },
+  "controlAwareness": {
+    "hasProtectedControls": false,
+    "authoritativeDropdownCount": 0,
+    "opaqueControlCount": 0,
+    "affectedParagraphCount": 0,
+    "nativeElementCounts": {
+      "dateElement": 4
+    },
+    "preservationRequired": false,
+    "recommendedBehavior": "No protected controls were detected in the scanned scope."
+  },
+  "warnings": [],
+  "files": {
+    "document_result": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/qc-author-cleanup-20260728-v2/document-result.json",
+      "bytes": 2639471,
+      "sha256": "78793f76ae15891a5cb56930d8b7e3f7447c9c1af5b2b44dc981ddfb1edb357b"
+    },
+    "control_inventory": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/qc-author-cleanup-20260728-v2/control-inventory.json",
+      "bytes": 4713,
+      "sha256": "792c4f1ae9225a6d86598ec9d2385f6c16e4424d2e94f3c424435526c9e32a55"
+    },
+    "document_outline": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/qc-author-cleanup-20260728-v2/document-outline.json",
+      "bytes": 327129,
+      "sha256": "383330635d1cdf8d9984952e46fb8836bb59dce542c7d1f0be1d8ba3e6d47465"
+    },
+    "document_text": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/qc-author-cleanup-20260728-v2/document-text.md",
+      "bytes": 55772,
+      "sha256": "6f4badf61be1ee39f1f16139e7d3af653d9479264af51195f3c00c1b3e27cc60"
+    },
+    "receipt": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/qc-author-cleanup-20260728-v2/receipt.json",
+      "bytes": 1013,
+      "sha256": "f5dac299786e6741af7399e8336ccc0d02fa8d139fd875c30e884ccd31b300d7"
+    }
+  },
+  "error": null
+}

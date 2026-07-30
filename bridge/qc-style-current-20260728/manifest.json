@@ -1,0 +1,59 @@
+{
+  "bridgeVersion": "3.6",
+  "kind": "google-docs-trusted-read",
+  "status": "complete",
+  "outputDir": "/Users/soumayseth/Documents/BlueOrigin/bridge/qc-style-current-20260728",
+  "target": {
+    "documentId": "1hkFAG6hgpGrSij1QMVwHMDksLTg7ccd_8CIADAXfvnU",
+    "title": "QC Platform — Engineering Team Working Document",
+    "revisionId": "AIroW35o73RmGDvfIP2QumgQUszb9U86WsogOrZMQinYbNHWxHX8opMJdphyTAlnTII5caB7_JLP0bYUvYM9tQTDIcyxNzbuNdT1bbnWf64",
+    "documentUrl": "https://docs.google.com/document/d/1hkFAG6hgpGrSij1QMVwHMDksLTg7ccd_8CIADAXfvnU",
+    "selectedTabId": null
+  },
+  "dropdownMetadata": {
+    "status": "unavailable",
+    "resolvedTool": null,
+    "authoritative": false,
+    "count": 0
+  },
+  "controlAwareness": {
+    "hasProtectedControls": false,
+    "authoritativeDropdownCount": 0,
+    "opaqueControlCount": 0,
+    "affectedParagraphCount": 0,
+    "nativeElementCounts": {
+      "dateElement": 4
+    },
+    "preservationRequired": false,
+    "recommendedBehavior": "No protected controls were detected in the scanned scope."
+  },
+  "warnings": [],
+  "files": {
+    "document_result": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/qc-style-current-20260728/document-result.json",
+      "bytes": 3496028,
+      "sha256": "85d00d205dd477ad5b2c8df065a6cdbb232ac34839cf89a776f3bc7cd994651a"
+    },
+    "control_inventory": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/qc-style-current-20260728/control-inventory.json",
+      "bytes": 4176,
+      "sha256": "21cb207fddcc4a8faccbcd25e40178f7fa11d2671cccc11b93962e81dacdbe9f"
+    },
+    "document_outline": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/qc-style-current-20260728/document-outline.json",
+      "bytes": 244967,
+      "sha256": "f73c48157ea7a00647360dea66ea48098a5020c04a80baa47fc9981743bed26e"
+    },
+    "document_text": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/qc-style-current-20260728/document-text.md",
+      "bytes": 58270,
+      "sha256": "5bca7c80e69e7cb0a598391023fe52536dff0696f2e79d7e87d30f30d9bf4d2a"
+    },
+    "receipt": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/qc-style-current-20260728/receipt.json",
+      "bytes": 1013,
+      "sha256": "ecb4489c9c0822affdfe1fb82d782f02ecd4305b9730d3ec6011b00bd668d83c"
+    }
+  },
+  "error": null
+}

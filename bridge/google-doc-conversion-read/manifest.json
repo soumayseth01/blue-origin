@@ -1,0 +1,57 @@
+{
+  "bridgeVersion": "3.6",
+  "kind": "google-docs-trusted-read",
+  "status": "complete",
+  "outputDir": "/Users/soumayseth/Documents/BlueOrigin/bridge/google-doc-conversion-read",
+  "target": {
+    "documentId": "1hkFAG6hgpGrSij1QMVwHMDksLTg7ccd_8CIADAXfvnU",
+    "title": "QC Platform — Engineering Team Working Document",
+    "revisionId": "AIroW35KOUncyiqoOpLDbGh4sGrWPCIMRN_nDdVkmdlqJr5eJdl7nHiSX_q2Xl4ovcp7NlQubRlHmf4lSR3OxBFaPyznizS36F9fMUHafq0",
+    "documentUrl": "https://docs.google.com/document/d/1hkFAG6hgpGrSij1QMVwHMDksLTg7ccd_8CIADAXfvnU",
+    "selectedTabId": null
+  },
+  "dropdownMetadata": {
+    "status": "unavailable",
+    "resolvedTool": null,
+    "authoritative": false,
+    "count": 0
+  },
+  "controlAwareness": {
+    "hasProtectedControls": false,
+    "authoritativeDropdownCount": 0,
+    "opaqueControlCount": 0,
+    "affectedParagraphCount": 0,
+    "nativeElementCounts": {},
+    "preservationRequired": false,
+    "recommendedBehavior": "No protected controls were detected in the scanned scope."
+  },
+  "warnings": [],
+  "files": {
+    "document_result": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/google-doc-conversion-read/document-result.json",
+      "bytes": 3356047,
+      "sha256": "b78a3624257fa1b6355f034e0fb11769b1a013a80c2b5fe35b4b82d79e57ba29"
+    },
+    "control_inventory": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/google-doc-conversion-read/control-inventory.json",
+      "bytes": 1054,
+      "sha256": "c386563d00a366c7fbe146300863d4f04e1b98650940101f46e8adb056b64a0d"
+    },
+    "document_outline": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/google-doc-conversion-read/document-outline.json",
+      "bytes": 205684,
+      "sha256": "d04c9cc8ebcaf074ff2358c57230edd2bd8607d11e7a544b21b78be166bd7760"
+    },
+    "document_text": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/google-doc-conversion-read/document-text.md",
+      "bytes": 48407,
+      "sha256": "8e0fbc4ce35b4a10eb75837f5925861b57018e34c32add9a5631072f8e15f26d"
+    },
+    "receipt": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/google-doc-conversion-read/receipt.json",
+      "bytes": 985,
+      "sha256": "e9263aa6d1614db673add9be7de89e573700023472988b931d27b4dd1fbdf9d1"
+    }
+  },
+  "error": null
+}

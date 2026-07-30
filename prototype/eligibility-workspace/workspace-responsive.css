@@ -1,0 +1,162 @@
+/* Scenario, results, simulation-shell, and responsive states */
+.scenario-product-grid>article{min-height:270px}
+.scenario-top{display:flex;width:100%;align-items:center;justify-content:space-between}
+.scenario-top>span:first-child{color:var(--hsg-orange);font-size:20px;font-weight:350}
+.scenario-product-grid>article>small{margin-top:16px;color:#7d878b;font-size:7px;text-transform:uppercase}
+.scenario-product-grid h3{margin:5px 0 7px}
+.program-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:auto}
+.program-tags span{padding:4px 6px;border-radius:999px;color:#38515b;background:#e8eff1;font-size:7px;font-weight:700}
+.scenario-footer{display:flex;width:100%;align-items:center;justify-content:space-between;margin-top:13px;padding-top:10px;border-top:1px solid var(--line)}
+.scenario-footer>span{color:#879094;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:7px}
+
+.assignment-table header,.assignment-table article{display:grid;grid-template-columns:minmax(260px,1fr) 110px 90px 110px 55px;gap:10px;align-items:center;padding:0 13px}
+.assignment-table header{min-height:34px;color:#7c8589;background:#f1f4f5;font-size:7px;font-weight:750;text-transform:uppercase}
+.assignment-table article{min-height:66px;border-top:1px solid #eceeef;font-size:8px}
+.assignment-table article>div{display:flex;min-width:0;gap:9px;align-items:center}
+.assignment-table article>div strong{overflow:hidden;font-size:9px;text-overflow:ellipsis;white-space:nowrap}
+
+.result-summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+.result-summary-grid article{min-height:135px;padding:15px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.result-summary-grid article:nth-child(1){color:#fff;border-color:var(--hsg-slate);background:var(--hsg-slate)}
+.result-summary-grid article>span{display:block;color:#7c8589;font-size:7px;text-transform:uppercase}
+.result-summary-grid article:nth-child(1)>span,.result-summary-grid article:nth-child(1)>small{color:#d4dfe3}
+.result-summary-grid article>strong{display:block;margin:24px 0 4px;font-size:32px;font-weight:350}
+.result-summary-grid article>small{color:#7d878b;font-size:8px}
+.event-ledger .panel-title{min-height:64px}
+.event-ledger>article{display:grid;grid-template-columns:55px 70px minmax(0,1fr) 60px;gap:10px;align-items:center;min-height:56px;padding:8px 13px;border-top:1px solid #eceeef}
+.event-ledger time,.event-ledger small,.event-ledger>article>span:last-child{color:#7e888c;font-size:7px}
+.event-ledger strong{display:block;font-size:9px}
+.event-ledger small{display:block;margin-top:2px}
+
+.template-grid>article{min-height:210px}
+.template-grid>article>.status-chip{margin-top:auto}
+.settings-list article{display:flex;gap:20px;align-items:center;justify-content:space-between;min-height:72px;padding:12px 14px;border-bottom:1px solid #eceeef}
+.settings-list article:last-child{border-bottom:0}
+.settings-list strong{font-size:10px}
+.settings-list p{margin:3px 0 0;color:#717b7f;font-size:8px}
+
+
+/* Keep the existing simulation runtime focused while reusing the same navigation shell. */
+.app-shell:not(.product-view) .studio-sidebar{align-items:center;padding:14px 8px;color:#fff;background:var(--hsg-black);border-right-color:#2c2c2c;overflow:hidden}
+.app-shell:not(.product-view) .studio-brand{display:block;min-height:auto;padding:0;border:0}
+.app-shell:not(.product-view) .studio-brand>div,.app-shell:not(.product-view) .sidebar-close,.app-shell:not(.product-view) .new-control,.app-shell:not(.product-view) .nav-group>span,.app-shell:not(.product-view) .rail-button>span:last-child,.app-shell:not(.product-view) .role-switch,.app-shell:not(.product-view) .open-notebook-button,.app-shell:not(.product-view) .profile-row>div,.app-shell:not(.product-view) .help-button{display:none}
+.app-shell:not(.product-view) .studio-sidebar .rail-nav{width:100%;padding:20px 0}
+.app-shell:not(.product-view) .studio-sidebar .nav-group{margin:0;padding:0;border:0}
+.app-shell:not(.product-view) .studio-sidebar .rail-button{display:none;width:42px;height:42px;margin:2px auto;padding:0;justify-content:center;color:#a9b0b3}
+.app-shell:not(.product-view) .studio-sidebar .rail-button[data-view="home"],.app-shell:not(.product-view) .studio-sidebar .rail-button[data-view="scenario-library"],.app-shell:not(.product-view) .studio-sidebar .rail-button[data-view="attempts"]{display:flex}
+.app-shell:not(.product-view) .studio-sidebar .rail-button .material-symbols-rounded{width:auto;color:inherit}
+.app-shell:not(.product-view) .studio-sidebar .rail-button.active{color:#080808;background:var(--hsg-orange)}
+.app-shell:not(.product-view) .studio-sidebar .rail-footer{margin-top:auto;padding:0;border:0}
+.app-shell:not(.product-view) .profile-row{display:block}
+.app-shell:not(.product-view) .avatar-button{display:grid}
+
+@media (max-width:1100px){.action-grid,.recent-grid,.notebook-grid,.scenario-product-grid,.template-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.source-table article{grid-template-columns:34px minmax(180px,1fr) auto}
+.source-create{grid-column:2/-1}
+.package-summary{grid-template-columns:repeat(2,1fr)}
+.result-summary-grid{grid-template-columns:repeat(2,1fr)}
+}
+
+@media (max-width:900px){
+  .app-shell.product-view{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr)}
+.product-view .main-column{grid-column:1;grid-row:1}
+.product-view .case-header{min-height:62px;padding:0 14px}
+.product-view #openSidebar{display:grid}
+.product-view .case-header h1{font-size:17px}
+.studio-sidebar{position:fixed;z-index:80;top:0;bottom:0;left:0;width:min(300px,88vw);transform:translateX(-102%);box-shadow:0 0 0 rgba(0,0,0,0);transition:transform 180ms ease,box-shadow 180ms ease}
+.studio-sidebar.open{transform:translateX(0);box-shadow:22px 0 60px rgba(17,29,34,.24)}
+.sidebar-close{display:grid}
+.product-page{padding:20px 14px 56px}
+.home-heading,.list-heading,.creator-heading{align-items:flex-start;flex-direction:column}
+.notebook-status{width:100%}
+.heading-actions{width:100%;align-items:stretch;flex-direction:column}
+.search-control{width:100%}
+.action-grid,.recent-grid,.notebook-grid,.scenario-product-grid,.template-grid{grid-template-columns:1fr}
+.action-card{min-height:160px}
+.assignment-hero{grid-template-columns:1fr}
+.assignment-hero dl{padding:14px 0 0;border-top:1px solid rgba(255,255,255,.22);border-left:0}
+.source-type-strip{overflow-x:auto}
+.source-table article{grid-template-columns:34px minmax(0,1fr) auto}
+.source-create{grid-column:1/-1;flex-wrap:wrap}
+.creator-steps li{padding:0 8px;font-size:0}
+.creator-steps li span{font-size:7px}
+.creator-grid,.configure-card,.draft-workspace{grid-template-columns:1fr}
+.grounding-panel{min-height:360px}
+.configure-fields{grid-template-columns:1fr}
+.storyboard>article{grid-template-columns:1fr}
+.scene-preview{min-height:120px}
+.package-summary,.result-summary-grid{grid-template-columns:1fr}
+.assignment-table{overflow-x:auto}
+.assignment-table header,.assignment-table article{min-width:760px}
+.event-ledger>article{grid-template-columns:48px 62px minmax(0,1fr)}
+.event-ledger>article>span:last-child{display:none}
+.write-dialog{border-radius:12px}
+
+  .app-shell:not(.product-view){grid-template-columns:1fr;grid-template-rows:62px 36px minmax(0,1fr)}
+.app-shell:not(.product-view) .studio-sidebar{align-items:stretch;width:min(300px,88vw);padding:0;color:var(--hsg-black);background:#fff;border-right-color:var(--line);overflow:visible}
+.app-shell:not(.product-view) .studio-brand{display:grid;min-height:62px;padding:0 16px;border-bottom:1px solid var(--line)}
+.app-shell:not(.product-view) .studio-brand>div,.app-shell:not(.product-view) .sidebar-close,.app-shell:not(.product-view) .new-control,.app-shell:not(.product-view) .nav-group>span,.app-shell:not(.product-view) .rail-button>span:last-child,.app-shell:not(.product-view) .role-switch,.app-shell:not(.product-view) .open-notebook-button,.app-shell:not(.product-view) .profile-row>div,.app-shell:not(.product-view) .help-button{display:initial}
+.app-shell:not(.product-view) .new-control{display:block}
+.app-shell:not(.product-view) .nav-group>span{display:block}
+.app-shell:not(.product-view) .rail-button>span:last-child{display:inline}
+.app-shell:not(.product-view) .role-switch,.app-shell:not(.product-view) .open-notebook-button{display:grid}
+.app-shell:not(.product-view) .open-notebook-button{display:flex}
+.app-shell:not(.product-view) .studio-sidebar .rail-nav{padding:4px 8px 12px}
+.app-shell:not(.product-view) .studio-sidebar .nav-group{margin-top:11px;padding-top:10px;border-top:1px solid #eceeef}
+.app-shell:not(.product-view) .studio-sidebar .rail-button{display:flex;width:100%;height:34px;margin:0;padding:0 10px;justify-content:flex-start;color:#313536}
+.app-shell:not(.product-view) .studio-sidebar .rail-footer{margin-top:0;padding:10px 12px 12px;border-top:1px solid var(--line)}
+.app-shell:not(.product-view) .profile-row{display:grid}
+.app-shell:not(.product-view) .help-button{display:grid}
+
+}
+
+/* Readability overrides for scenario, results, runtime shell, and responsive states. */
+.scenario-product-grid>article{min-height:248px}
+.scenario-top>span:first-child{color:var(--ink);font-size:20px;font-weight:600;line-height:28px}
+.scenario-product-grid>article>small{margin-top:14px;color:var(--muted);font-size:12px;line-height:16px;text-transform:none}
+.program-tags{gap:6px}
+.program-tags span{padding:4px 7px;color:#555;background:#f1f1f1;font-size:12px;font-weight:500;line-height:16px}
+.scenario-footer{margin-top:12px;border-top-color:var(--line)}
+.scenario-footer>span{color:var(--muted);font-size:11px;line-height:16px}
+
+.assignment-table header,.assignment-table article{gap:12px;padding:0 16px}
+.assignment-table header{min-height:36px;color:var(--muted);background:#f5f5f5;font-size:12px;font-weight:500;line-height:16px;text-transform:none}
+.assignment-table article{min-height:64px;border-top-color:var(--line);font-size:12px;line-height:16px}
+.assignment-table article>div strong{font-size:14px;font-weight:600;line-height:20px}
+
+.result-summary-grid{gap:12px}
+.result-summary-grid article{padding:16px;border-color:var(--line);border-radius:12px}
+.result-summary-grid article:nth-child(1){color:var(--ink);border-color:var(--line);background:#fff}
+.result-summary-grid article>span,.result-summary-grid article:nth-child(1)>span,.result-summary-grid article:nth-child(1)>small{color:var(--muted);font-size:12px;line-height:16px;text-transform:none}
+.result-summary-grid article>strong{margin:20px 0 4px;font-size:30px;font-weight:600;line-height:36px}
+.result-summary-grid article>small{color:var(--muted);font-size:12px;line-height:16px}
+.event-ledger>article{gap:12px;padding:8px 16px;border-top-color:var(--line)}
+.event-ledger time,.event-ledger small,.event-ledger>article>span:last-child{color:var(--muted);font-size:11px;line-height:16px}
+.event-ledger strong{font-size:14px;font-weight:600;line-height:20px}
+
+.settings-list article{min-height:64px;padding:12px 16px;border-bottom-color:var(--line)}
+.settings-list strong{font-size:14px;font-weight:600;line-height:20px}
+.settings-list p{color:var(--muted);font-size:12px;line-height:18px}
+.app-shell:not(.product-view) .studio-sidebar{background:#242424;border-right-color:#111}
+.app-shell:not(.product-view) .studio-sidebar .rail-button.active{color:#242424;background:var(--hsg-orange)}
+
+@media (max-width:900px){
+  .product-view .case-header{min-height:56px;padding:0 14px}
+  .product-view .case-header h1{font-size:18px;line-height:24px}
+  .studio-sidebar{display:flex;grid-row:auto;width:min(280px,88vw);height:100dvh;bottom:auto;flex-direction:column;overflow-x:hidden;overflow-y:auto}
+  .product-view .studio-sidebar .rail-nav .rail-button{display:flex}
+  .product-page{padding:20px 14px 48px}
+  .action-card{min-height:152px}
+  .creator-steps li{padding:0 8px;font-size:0}
+  .creator-steps li span{font-size:12px}
+  .assignment-hero dl{border-top-color:var(--line)}
+  .app-shell:not(.product-view) .studio-sidebar{width:min(280px,88vw)}
+  .app-shell:not(.product-view) .studio-brand{min-height:56px;padding:0 12px}
+  .app-shell:not(.product-view) .studio-sidebar .rail-button{height:32px;color:#4f4f4f;font-size:14px}
+}
+
+@media (max-width:520px){
+  .home-heading h2,.list-heading h2,.creator-heading h2,.search-hero h2{font-size:26px;line-height:32px}
+  .product-page{padding-inline:12px}
+  .recent-card,.knowledge-list article,.compact-card,.source-table article{padding-inline:12px}
+}

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/api/studio/integrations", "destination": "/api/studio/router?action=integrations" },
+    { "source": "/api/studio/notebooks", "destination": "/api/studio/router?action=notebooks" },
+    { "source": "/api/studio/library-sources", "destination": "/api/studio/router?action=library-sources" },
+    { "source": "/api/studio/library-sources/import", "destination": "/api/studio/router?action=library-source-import" },
+    { "source": "/api/studio/library-sources/:id/upload", "destination": "/api/studio/router?action=library-source-upload&id=:id" },
+    { "source": "/api/studio/library-sources/:id/document", "destination": "/api/studio/router?action=library-source-document&id=:id" },
+    { "source": "/api/studio/library-sources/:id", "destination": "/api/studio/router?action=library-source&id=:id" },
+    { "source": "/api/studio/notebooks/:id/sources", "destination": "/api/studio/router?action=notebook-sources&id=:id" },
+    { "source": "/api/studio/notebooks/:id/analyze", "destination": "/api/studio/router?action=notebook-analyze&id=:id" },
+    { "source": "/api/studio/notebooks/:id/chat", "destination": "/api/studio/router?action=notebook-chat&id=:id" },
+    { "source": "/api/studio/notebooks/:id/content", "destination": "/api/studio/router?action=notebook-content&id=:id" },
+    { "source": "/api/studio/notebooks/:id/review", "destination": "/api/studio/router?action=notebook-review&id=:id" },
+    { "source": "/api/studio/notebooks/:id/publish", "destination": "/api/studio/router?action=notebook-publish&id=:id" },
+    { "source": "/api/studio/notebooks/:id/archive", "destination": "/api/studio/router?action=notebook-archive&id=:id" },
+    { "source": "/api/studio/notebooks/:id/versions", "destination": "/api/studio/router?action=notebook-versions&id=:id" },
+    { "source": "/api/studio/notebooks/:id/events", "destination": "/api/studio/router?action=notebook-events&id=:id" },
+    { "source": "/api/studio/notebooks/:id", "destination": "/api/studio/router?action=notebook&id=:id" },
+    { "source": "/api/studio/sources/:id/outline", "destination": "/api/studio/router?action=source-outline&id=:id" },
+    { "source": "/api/studio/sources/:id/blocks", "destination": "/api/studio/router?action=source-blocks&id=:id" },
+    { "source": "/api/studio/source-review", "destination": "/api/studio/router?action=source-review" },
+    { "source": "/api/studio/source-context/ask", "destination": "/api/studio/router?action=source-context" },
+    { "source": "/api/studio/content-brief/generate", "destination": "/api/studio/router?action=brief-generate" },
+    { "source": "/api/studio/content-brief/edit", "destination": "/api/studio/router?action=brief-edit" },
+    { "source": "/api/studio/projects", "destination": "/api/studio/router?action=projects" },
+    { "source": "/api/studio/renders", "destination": "/api/studio/router?action=renders" },
+    { "source": "/api/studio/releases", "destination": "/api/studio/router?action=releases" },
+    { "source": "/api/studio/simulations/generate", "destination": "/api/studio/router?action=simulation-generate" },
+    { "source": "/api/lighthouse/catalog", "destination": "/api/lighthouse/router?action=catalog" },
+    { "source": "/api/lighthouse/me", "destination": "/api/lighthouse/router?action=me" },
+    { "source": "/api/lighthouse/analytics", "destination": "/api/lighthouse/router?action=analytics" },
+    { "source": "/api/lighthouse/modules", "destination": "/api/lighthouse/router?action=modules" },
+    { "source": "/api/lighthouse/modules/:id/publish", "destination": "/api/lighthouse/router?action=publish&id=:id" },
+    { "source": "/api/lighthouse/modules/:id/assign", "destination": "/api/lighthouse/router?action=assign&id=:id" },
+    { "source": "/api/lighthouse/modules/:id/archive", "destination": "/api/lighthouse/router?action=archive&id=:id" },
+    { "source": "/api/lighthouse/modules/:id", "destination": "/api/lighthouse/router?action=module&id=:id" },
+    { "source": "/api/lighthouse/progress", "destination": "/api/lighthouse/router?action=progress" },
+    { "source": "/api/lighthouse/quiz-attempts", "destination": "/api/lighthouse/router?action=quiz-attempts" },
+    { "source": "/api/lighthouse/assets/upload-token", "destination": "/api/lighthouse/router?action=upload-token" },
+    { "source": "/api/lighthouse/assets/register", "destination": "/api/lighthouse/router?action=asset-register" },
+    { "source": "/api/lighthouse/assets/:id/content", "destination": "/api/lighthouse/router?action=asset-content&id=:id" },
+    { "source": "/api/sources/:id/outline", "destination": "/api/studio/router?action=source-outline&id=:id" },
+    { "source": "/api/sources/:id/blocks", "destination": "/api/studio/router?action=source-blocks&id=:id" },
+    { "source": "/api/source-review", "destination": "/api/studio/router?action=source-review" },
+    { "source": "/api/source-context/ask", "destination": "/api/studio/router?action=source-context" },
+    { "source": "/api/content-brief/generate", "destination": "/api/studio/router?action=brief-generate" },
+    { "source": "/api/content-brief/edit", "destination": "/api/studio/router?action=brief-edit" },
+    { "source": "/api/projects", "destination": "/api/studio/router?action=projects" },
+    { "source": "/api/renders", "destination": "/api/studio/router?action=renders" },
+    { "source": "/api/releases", "destination": "/api/studio/router?action=releases" },
+    { "source": "/api/simulations/generate", "destination": "/api/studio/router?action=simulation-generate" }
+  ],
+  "functions": {
+    "api/**/*.js": { "maxDuration": 60 }
+  },
+  "crons": [
+    { "path": "/api/cron/cleanup-artifacts", "schedule": "0 4 * * *" }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
+      ]
+    }
+  ]
+}

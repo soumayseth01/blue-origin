@@ -1,0 +1,141 @@
+{
+  "version": 1,
+  "kind": "google-docs-trusted-read-context",
+  "target": {
+    "documentId": "1hkFAG6hgpGrSij1QMVwHMDksLTg7ccd_8CIADAXfvnU",
+    "title": "QC Platform — Engineering Team Working Document",
+    "revisionId": "AIroW36piae2kQQ2V5CiFqCGvNaqi1tIMRxTosISQma2PQrNMHD6c_ik0jgY2iSBMNf9unupJVqHU539XjHv1BTti9h6VSbtcIYcRvAg2XU",
+    "documentUrl": "https://docs.google.com/document/d/1hkFAG6hgpGrSij1QMVwHMDksLTg7ccd_8CIADAXfvnU",
+    "selectedTabId": null
+  },
+  "dropdownMetadata": {
+    "status": "unavailable",
+    "resolvedTool": null,
+    "authoritative": false,
+    "count": 0
+  },
+  "derivedControlInventory": {
+    "hasProtectedControls": false,
+    "authoritativeDropdownCount": 0,
+    "opaqueControlCount": 0,
+    "nativeElementCounts": {
+      "dateElement": 4
+    },
+    "tabsScanned": [
+      "t.0"
+    ],
+    "controls": [],
+    "nativeElements": [
+      {
+        "type": "dateElement",
+        "startIndex": 138,
+        "endIndex": 139,
+        "tabId": "t.0",
+        "segmentId": null,
+        "container": {
+          "kind": "paragraph",
+          "path": "root.tabs[0].body.content[5]",
+          "tabId": "t.0",
+          "segmentId": null,
+          "startIndex": 123,
+          "endIndex": 141,
+          "namedStyleType": "NORMAL_TEXT",
+          "listId": "kix.list.2",
+          "nestingLevel": null,
+          "table": null
+        },
+        "properties": {
+          "timestamp": "2026-07-28T00:00:00Z",
+          "locale": "en",
+          "dateFormat": "DATE_FORMAT_MONTH_DAY_YEAR_ABBREVIATED",
+          "timeFormat": "TIME_FORMAT_DISABLED",
+          "displayText": "Jul 28, 2026"
+        }
+      },
+      {
+        "type": "dateElement",
+        "startIndex": 24571,
+        "endIndex": 24572,
+        "tabId": "t.0",
+        "segmentId": null,
+        "container": {
+          "kind": "paragraph",
+          "path": "root.tabs[0].body.content[535]",
+          "tabId": "t.0",
+          "segmentId": null,
+          "startIndex": 24565,
+          "endIndex": 24573,
+          "namedStyleType": "NORMAL_TEXT",
+          "listId": null,
+          "nestingLevel": null,
+          "table": null
+        },
+        "properties": {
+          "timestamp": "2026-07-28T00:00:00Z",
+          "locale": "en",
+          "dateFormat": "DATE_FORMAT_MONTH_DAY_YEAR_ABBREVIATED",
+          "timeFormat": "TIME_FORMAT_DISABLED",
+          "displayText": "Jul 28, 2026"
+        }
+      },
+      {
+        "type": "dateElement",
+        "startIndex": 24706,
+        "endIndex": 24707,
+        "tabId": "t.0",
+        "segmentId": null,
+        "container": {
+          "kind": "paragraph",
+          "path": "root.tabs[0].body.content[538]",
+          "tabId": "t.0",
+          "segmentId": null,
+          "startIndex": 24700,
+          "endIndex": 24708,
+          "namedStyleType": "NORMAL_TEXT",
+          "listId": null,
+          "nestingLevel": null,
+          "table": null
+        },
+        "properties": {
+          "timestamp": "2026-07-28T00:00:00Z",
+          "locale": "en",
+          "dateFormat": "DATE_FORMAT_MONTH_DAY_YEAR_ABBREVIATED",
+          "timeFormat": "TIME_FORMAT_DISABLED",
+          "displayText": "Jul 28, 2026"
+        }
+      },
+      {
+        "type": "dateElement",
+        "startIndex": 24863,
+        "endIndex": 24864,
+        "tabId": "t.0",
+        "segmentId": null,
+        "container": {
+          "kind": "paragraph",
+          "path": "root.tabs[0].body.content[541]",
+          "tabId": "t.0",
+          "segmentId": null,
+          "startIndex": 24857,
+          "endIndex": 24865,
+          "namedStyleType": "NORMAL_TEXT",
+          "listId": null,
+          "nestingLevel": null,
+          "table": null
+        },
+        "properties": {
+          "timestamp": "2026-07-28T00:00:00Z",
+          "locale": "en",
+          "dateFormat": "DATE_FORMAT_MONTH_DAY_YEAR_ABBREVIATED",
+          "timeFormat": "TIME_FORMAT_DISABLED",
+          "displayText": "Jul 28, 2026"
+        }
+      }
+    ]
+  },
+  "editGuidance": {
+    "advisoryOnly": true,
+    "requiresTargetedPreservation": false,
+    "recommendedBehavior": "No protected controls were detected in the scanned scope.",
+    "warnings": []
+  }
+}

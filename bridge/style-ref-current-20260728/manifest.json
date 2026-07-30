@@ -1,0 +1,57 @@
+{
+  "bridgeVersion": "3.6",
+  "kind": "google-docs-trusted-read",
+  "status": "complete",
+  "outputDir": "/Users/soumayseth/Documents/BlueOrigin/bridge/style-ref-current-20260728",
+  "target": {
+    "documentId": "15YjipX00FMceUiwJsKc3CpHb22CFxopoHAKH5jmvQ0s",
+    "title": "HSG NewCo — Founding CEO Alignment Memo",
+    "revisionId": "AIroW35atHDM5U3plgoutE8p8OyDQz_l2-AsUA9NRZp10Y_d8P7oCG6JY3623u6uYav-hbZ2FGTtFqSbQAKsptxh2EM42rfl16DQsQShQAU",
+    "documentUrl": "https://docs.google.com/document/d/15YjipX00FMceUiwJsKc3CpHb22CFxopoHAKH5jmvQ0s",
+    "selectedTabId": null
+  },
+  "dropdownMetadata": {
+    "status": "unavailable",
+    "resolvedTool": null,
+    "authoritative": false,
+    "count": 0
+  },
+  "controlAwareness": {
+    "hasProtectedControls": false,
+    "authoritativeDropdownCount": 0,
+    "opaqueControlCount": 0,
+    "affectedParagraphCount": 0,
+    "nativeElementCounts": {},
+    "preservationRequired": false,
+    "recommendedBehavior": "No protected controls were detected in the scanned scope."
+  },
+  "warnings": [],
+  "files": {
+    "document_result": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/style-ref-current-20260728/document-result.json",
+      "bytes": 631185,
+      "sha256": "c587d2a5bf47aadcc35afba83a01775b8d3ebd8ca8334d1c89f78cb69e9d01fd"
+    },
+    "control_inventory": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/style-ref-current-20260728/control-inventory.json",
+      "bytes": 1046,
+      "sha256": "7750650824373e8b938dba381d008d81fbe12b48b23ed53f5d098b4d22a411bc"
+    },
+    "document_outline": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/style-ref-current-20260728/document-outline.json",
+      "bytes": 84257,
+      "sha256": "366cc5e714f247a60885632ca6f4be89c61bfbccce5336068c72c363580eff57"
+    },
+    "document_text": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/style-ref-current-20260728/document-text.md",
+      "bytes": 16196,
+      "sha256": "ee57edd61715d3cba8e47f0801cfc0ff289bfa76cb9f11c887df76cf58042e1b"
+    },
+    "receipt": {
+      "path": "/Users/soumayseth/Documents/BlueOrigin/bridge/style-ref-current-20260728/receipt.json",
+      "bytes": 977,
+      "sha256": "c0d76ba0904f016625aaa491f671f99c17f37c5c78b3064403fff8ad736a6b7c"
+    }
+  },
+  "error": null
+}

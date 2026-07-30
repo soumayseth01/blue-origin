@@ -1,0 +1,3 @@
+import { db, demoLearnerId } from "../../_lib/db.js";
+import { allowMethod, enforceRateLimit, handleError, send } from "../../_lib/http.js";
+export default async function handler(req,res){if(!allowMethod(req,res,"GET"))return;try{enforceRateLimit(req);const sql=db();const rows=await sql`SELECT attempt_id,repository_attempt_id,scenario_id,mode,completion_state,score,processing_score,interview_score,proficiency,critical_errors,sync_status,duration_seconds,created_at,attempt_payload FROM learning_attempts WHERE learner_id=${demoLearnerId()} ORDER BY created_at DESC LIMIT 25`;send(res,200,{learner_id:demoLearnerId(),attempts:rows.map(({attempt_payload,...row})=>({...row,feedback:attempt_payload}))});}catch(error){handleError(res,error);} }

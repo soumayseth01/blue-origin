@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="BlueOrigin product design, Open Notebook, and eligibility simulation prototype." />
+    <meta name="theme-color" content="#3f5966" />
+    <script>
+      if (window.location.protocol === "file:") {
+        window.location.replace(`https://eligibility-workspace-blue-origin.vercel.app/${window.location.search}${window.location.hash}`);
+      }
+    </script>
+    <title>BlueOrigin — Product Studio</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ff5b1a'/%3E%3Cpath d='M32 13v38M13 32h38' stroke='white' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0,0" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="product.css" />
+    <link rel="stylesheet" href="workspace.css" />
+    <link rel="stylesheet" href="workspace-responsive.css" />
+    <link rel="stylesheet" href="workspace-notes.css" />
+    <link rel="stylesheet" href="screenpack.css?v=20260729-drag-split-5" />
+    <link rel="stylesheet" href="artifact-studio.css?v=20260730-caller-brief-1" />
+    <link rel="stylesheet" href="lighthouse.css?v=20260730-lighthouse-1" />
+  </head>
+  <body>
+    <a class="skip-link" href="#workspace">Skip to case workspace</a>
+
+    <div class="app-shell product-view" id="appShell">
+      <aside class="global-rail studio-sidebar" id="studioSidebar" aria-label="Product Studio navigation">
+        <div class="studio-brand">
+          <button class="brand-mark" aria-label="BlueOrigin home" data-view="home"><span class="material-symbols-rounded" aria-hidden="true">asterisk</span></button>
+          <div><strong>BlueOrigin</strong><small>Knowledge Studio</small></div>
+          <button class="sidebar-close mobile-only" id="closeProductSidebar" aria-label="Close navigation"><span class="material-symbols-rounded">close</span></button>
+        </div>
+
+        <div class="new-control">
+          <button class="new-button" id="newButton" type="button" aria-expanded="false"><span class="material-symbols-rounded" aria-hidden="true">add</span><span id="contextActionLabel">Add knowledge</span></button>
+        </div>
+
+        <nav class="rail-nav" aria-label="Product areas">
+          <button class="rail-button active" data-view="home" aria-current="page"><span class="material-symbols-rounded">home</span><span>Home</span></button>
+          <div class="nav-group author-only"><span>Workspace</span>
+            <button class="rail-button" data-view="notebook"><span class="material-symbols-rounded">menu_book</span><span>Notebook</span></button>
+            <button class="rail-button" data-view="library"><span class="material-symbols-rounded">local_library</span><span>Library</span></button>
+          </div>
+          <div class="nav-group"><span>Learn</span>
+            <button class="rail-button" data-view="lighthouse"><span class="material-symbols-rounded">school</span><span>Lighthouse</span></button>
+            <button class="rail-button author-only" data-view="lighthouse-manage"><span class="material-symbols-rounded">dashboard_customize</span><span>Manage Modules</span></button>
+            <button class="rail-button learner-only" data-view="my-learning"><span class="material-symbols-rounded">workspace_premium</span><span>My Learning</span></button>
+          </div>
+          <div class="nav-group"><span>Simulate</span>
+            <button class="rail-button" data-view="scenario-library"><span class="material-symbols-rounded">view_carousel</span><span>Scenario Library</span></button>
+            <button class="rail-button" data-view="assignments"><span class="material-symbols-rounded">assignment</span><span>Assignments</span></button>
+            <button class="rail-button" data-view="attempts"><span class="material-symbols-rounded">analytics</span><span>Attempts &amp; Results</span></button>
+          </div>
+          <div class="nav-group author-only"><span>Manage</span>
+            <button class="rail-button" data-view="settings"><span class="material-symbols-rounded">settings</span><span>Settings</span></button>
+          </div>
+        </nav>
+
+        <div class="rail-footer">
+          <div class="role-switch" role="group" aria-label="Demo role">
+            <button class="active" data-role="author" aria-pressed="true">Author</button>
+            <button data-role="learner" aria-pressed="false">Learner</button>
+          </div>
+          <button class="open-notebook-button" id="openNotebookButton" hidden aria-hidden="true" tabindex="-1"><span class="material-symbols-rounded">menu_book</span><span>Notebook</span></button>
+          <div class="profile-row"><span class="avatar-button">SS</span><div><strong>Soumay Seth</strong><small>Local workspace</small></div><button class="help-button" id="helpButton" aria-label="Help"><span class="material-symbols-rounded">help</span></button></div>
+        </div>
+        <div id="newMenu" class="new-menu" hidden>
+          <button type="button" data-new="source"><span class="material-symbols-rounded">library_add</span><span><strong>Knowledge source</strong><small>Policy, PDF, link, or transcript</small></span></button>
+          <button type="button" data-new="video"><span class="material-symbols-rounded">movie</span><span><strong>Video</strong><small>Grounded learning video</small></span></button>
+          <button type="button" data-new="quiz"><span class="material-symbols-rounded">quiz</span><span><strong>Quiz</strong><small>Knowledge check</small></span></button>
+          <button type="button" data-new="simulation"><span class="material-symbols-rounded">smart_toy</span><span><strong>Simulation</strong><small>Practice experience</small></span></button>
+          <button type="button" data-new="lighthouse-builder"><span class="material-symbols-rounded">school</span><span><strong>Learning module</strong><small>Assemble and publish in Lighthouse</small></span></button>
+        </div>
+      </aside>
+
+      <aside class="workflow-sidebar" id="workflowSidebar" aria-label="Case workflow">
+        <div class="sidebar-top">
+          <div class="product-name">BO <span>Demo</span></div>
+          <button class="icon-button workflow-collapse" id="workflowCollapseButton" aria-label="Expand case workflow" aria-expanded="false"><span class="material-symbols-rounded" aria-hidden="true">right_panel_open</span></button>
+          <button class="icon-button mobile-only" id="closeSidebar" aria-label="Close workflow navigation">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        </div>
+
+        <button class="scenario-switcher" id="openScenarioLibrary" aria-haspopup="dialog" data-tooltip="Change scenario">
+          <span class="scenario-number" id="scenarioNumber">01</span>
+          <span>
+            <small>Current simulation</small>
+            <strong id="sidebarScenarioTitle">Combined initial application</strong>
+          </span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 10l4 4 4-4" /></svg>
+        </button>
+
+        <div class="sidebar-section-label">
+          <span>Case workflow</span>
+          <span id="workflowProgress">2 of 9</span>
+        </div>
+
+        <nav class="workflow-nav" id="workflowNav" aria-label="Eligibility workflow"></nav>
+
+        <div class="package-card">
+          <span class="status-dot"></span>
+          <div>
+            <small>Frozen package</small>
+            <strong id="packageVersion">BO-001 · v0.1</strong>
+          </div>
+          <button class="icon-button" id="copyPackage" data-tooltip="Copy package ID" aria-label="Copy package ID">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8h11v11H8zM5 16V5h11" /></svg>
+          </button>
+        </div>
+      </aside>
+
+      <main class="main-column" id="workspace">
+        <header class="case-header">
+          <div class="header-leading">
+            <button class="call-back-control" id="backFromCall" type="button" aria-label="Save and exit this call">
+              <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>
+              <span>Back</span>
+            </button>
+            <button class="icon-button mobile-only" id="openSidebar" aria-label="Open navigation">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+            </button>
+            <div class="case-heading-copy">
+              <div class="eyebrow-row">
+                <span class="synthetic-badge">Synthetic case</span>
+                <span id="caseId">CASE-BO-2401</span>
+              </div>
+              <h1 id="scenarioTitle">Combined Medicaid, SNAP & TANF initial application</h1>
+            </div>
+          </div>
+
+          <div class="header-actions">
+            <div class="hume-connection" id="humeConnection"><span></span><div><small>Voice</small><strong id="humeConnectionLabel">Preflight</strong></div></div>
+            <div class="mode-switch" role="group" aria-label="Simulation mode">
+              <button class="active" data-mode="practice" aria-pressed="true">Practice</button>
+              <button data-mode="assessment" aria-pressed="false">Assessment</button>
+            </div>
+            <div class="timer" aria-label="Attempt timer">
+              <span class="timer-dot"></span>
+              <time id="timer">00:00</time>
+            </div>
+            <button class="call-control" id="audioButton" aria-label="Toggle call audio" aria-pressed="true"><span class="material-symbols-rounded" aria-hidden="true">volume_up</span></button>
+            <button class="call-control" id="pauseCallerButton" aria-label="Pause caller responses" aria-pressed="false" disabled><span class="material-symbols-rounded" aria-hidden="true">pause</span></button>
+            <button class="call-control call-end" id="endCallTop" aria-label="End call and review feedback"><span class="material-symbols-rounded" aria-hidden="true">call_end</span><span>End call</span></button>
+          </div>
+        </header>
+
+        <div class="program-strip" id="programStrip" aria-label="Programs requested"></div>
+
+        <section class="screen-content" id="screenContent" aria-live="polite"></section>
+
+      </main>
+
+      <aside class="coach-panel" id="coachPanel" aria-label="Simulation assistant">
+        <div class="coach-resize-handle" data-coach-resize role="separator" aria-label="Resize case and coach panel" aria-orientation="vertical" aria-valuemin="360" aria-valuemax="640" aria-valuenow="380" tabindex="0"><span></span></div>
+        <section class="preflight-case-brief" id="preflightCaseBrief" hidden aria-label="Case briefing"></section>
+        <header class="coach-header">
+          <div class="client-identity">
+            <div class="portrait" id="clientPortrait" aria-hidden="true">MO</div>
+            <div class="client-details"><strong id="clientName">Maya Ortiz</strong><span id="clientDescription">Applicant · English</span></div>
+          </div>
+          <div class="coach-header-actions">
+            <div class="live-pill"><span></span><span id="callStateLabel">Ready</span></div>
+          </div>
+        </header>
+
+        <div class="live-coach-stack">
+          <section class="caller-signal" aria-labelledby="callerSignalTitle"><div class="signal-heading"><span class="signal-icon material-symbols-rounded" aria-hidden="true">graphic_eq</span><div><small>Caller signal</small><strong id="callerSignalTitle">Frustration rising</strong></div><span class="signal-trend" id="callerSignalTrend">↗</span></div><div class="mini-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><blockquote id="clientCaption">“Hi, I’m applying because my hours changed and I need help with medical coverage, food, and cash assistance.”</blockquote><div class="disclosure-meta"><span id="disclosureLabel">Opening statement</span><time id="disclosureTime">00:04</time></div></section>
+
+          <details class="coach-disclosure affect-demo-panel"><summary><span>Caller profile details</span><span id="callerProfileSummary">Anxious · Moderate</span></summary><dl class="affect-detail-list"><div><dt>Assigned profile</dt><dd id="callerProfileDetail">Anxious</dd></div><div><dt>Deterministic state</dt><dd id="callerStateDetail">Concern present</dd></div><div><dt>Learner vocal signal</dt><dd id="learnerAffectDetail">Waiting for speech</dd></div></dl><div class="affect-trigger-history"><strong>Recent trajectory triggers</strong><ol id="callerTriggerHistory"><li>Profile selected</li></ol></div><div class="expression-score-preview"><strong>Recent Hume observations</strong><div id="humeExpressionScores">No observations yet</div><small>Confidence estimates only; not a diagnosis.</small></div></details>
+
+          <section class="coach-guidance-card" id="coachPracticeContent"><div class="recommendation-label"><span>Next best action</span><span id="coachHintLevel">Grounded</span></div><div class="coach-objective" id="coachHintPanel"><span class="material-symbols-rounded" aria-hidden="true">assistant</span><div><small id="coachActionType">Ask for information</small><strong id="coachActionTitle">Confirm the household before constructing program units.</strong><p id="coachInstruction">Ask one clear question, then enter the supported response on the current screen.</p></div></div><div class="coach-grounding-grid"><section><span class="material-symbols-rounded" aria-hidden="true">fact_check</span><div><small>Information</small><strong id="coachInformation">Ask the caller for the missing fact</strong><p id="coachProvenance">Not yet disclosed</p></div></section><section><span class="material-symbols-rounded" aria-hidden="true">input</span><div><small>Where it goes</small><strong id="coachDestination">Household → Relationship</strong><p id="coachDestinationDetail">Exact field mapped in BenefitConnect</p></div></section></div><div class="coach-actions"><button class="assistant-action" id="policyGuideButton" aria-expanded="false"><span class="material-symbols-rounded" aria-hidden="true">policy</span>Show policy</button><button class="assistant-action primary" id="locateTargetButton"><span class="material-symbols-rounded" aria-hidden="true">center_focus_strong</span>Locate field</button><button class="assistant-action visually-hidden" id="requestHintButton">Refresh guidance</button></div><div class="coach-policy-card" id="coachPolicyCard" hidden><div><small id="coachPolicyScope">Demonstration procedure</small><strong id="coachPolicySummary">Use verified information and preserve the source of each case fact.</strong></div><p>State/customer policy supersedes this state-neutral demonstration guidance.</p><div class="coach-citation" id="coachCitation">Grounded in the integrated eligibility specification.</div></div></section>
+
+          <section class="smart-checklist" aria-labelledby="checklistTitle"><div class="card-heading-row"><h3 id="checklistTitle">Call checklist</h3><span id="factsRevealed">1 / 5 facts</span></div><ol id="liveChecklist"><li class="active"><span></span>Confirm household composition</li><li><span></span>Review current evidence</li><li><span></span>Explain next steps</li></ol></section>
+
+          <section class="coach-assessment-lock" id="coachAssessmentLock" hidden><span class="material-symbols-rounded" aria-hidden="true">lock</span><div><strong>Assessment is recording silently.</strong><p>Guidance and correctness appear after submission.</p></div></section>
+
+          <section class="evaluation-section compact-evaluation" id="evaluationSection" aria-labelledby="evaluationHeading"><div class="card-heading-row"><h3 id="evaluationHeading">Latest check</h3><span class="mode-label" id="evaluationModeLabel">Practice</span></div><div class="evaluation-empty" id="evaluationEmpty"><p>Validate a screen to receive cited feedback.</p></div><div class="evaluation-result" id="evaluationResult" hidden></div></section>
+
+          <details class="coach-disclosure"><summary><span>Live transcript</span><span class="caption-status">Captions on</span></summary><ol class="live-transcript" id="liveTranscript"></ol><div class="voice-fallback" id="voiceFallback"><p>Hume live call topics and disclosed facts.</p><div class="prompt-grid" id="promptGrid"></div></div></details>
+
+          <details class="coach-disclosure presenter-disclosure"><summary><span>Capture &amp; replay</span><span id="activitySnapshotCount">0 snapshots</span></summary><button class="presenter-toggle" id="presenterToggle" aria-pressed="false"><span class="material-symbols-rounded" aria-hidden="true">visibility</span>Presenter view</button><section class="midscene-presenter" id="midscenePresenter" hidden><div class="midscene-status-row"><span class="midscene-pulse"></span><strong id="midsceneStatus">Midscene observing</strong><span id="midsceneConfidence">Approved mapping</span></div><div class="midscene-frame" id="midsceneFrame"><img id="midsceneImage" alt="Composite simulation snapshot" /><span class="midscene-focus" id="midsceneFocus" hidden></span><div class="midscene-frame-label"><span class="material-symbols-rounded" aria-hidden="true">photo_camera</span><span id="midsceneFrameLabel">Waiting for a meaningful event</span></div></div><dl class="midscene-details"><div><dt>Semantic target</dt><dd id="midsceneTarget">Current eligibility screen</dd></div><div><dt>Authority</dt><dd>Guide + observe only</dd></div><div><dt>Correctness</dt><dd>Deterministic evaluator</dd></div></dl></section><button class="event-trace-toggle" id="eventTraceToggle" aria-expanded="false" aria-controls="eventTrace"><span>Event replay</span><span class="event-count" id="eventCount">0</span><span class="material-symbols-rounded">expand_more</span></button><ol class="event-trace" id="eventTrace" hidden></ol></details>
+        </div>
+
+        <footer class="action-footer coach-action-footer">
+          <div class="save-state" id="saveState">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l4 4 10-10" /></svg>
+            Draft saved locally
+          </div>
+          <div class="footer-actions">
+            <button class="button button-secondary" id="previousScreenButton">Previous</button>
+            <button class="button button-secondary" id="reviewEvidenceButton">Review evidence</button>
+            <button class="button button-primary" id="primaryActionButton">Validate &amp; continue</button>
+          </div>
+        </footer>
+      </aside>
+    </div>
+
+    <dialog class="scenario-dialog" id="scenarioDialog" aria-labelledby="scenarioDialogTitle">
+      <div class="dialog-topbar">
+        <div>
+          <span class="dialog-kicker">BlueOrigin simulations</span>
+          <h2 id="scenarioDialogTitle">Choose a scenario</h2>
+        </div>
+        <button class="icon-button" id="closeScenarioLibrary" aria-label="Close scenario library">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
+      </div>
+      <p class="dialog-intro">Six connected cases for Medicaid, SNAP, and TANF. Each attempt uses a frozen synthetic package and deterministic evaluation rules.</p>
+      <div class="scenario-grid" id="scenarioGrid"></div>
+    </dialog>
+
+    <section class="feedback-view" id="feedbackView" hidden aria-labelledby="feedbackTitle">
+      <header class="feedback-topbar">
+        <button class="feedback-back" id="feedbackReturn" type="button"><span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>Scenario Library</button>
+        <div><span>Post-call coaching</span><h1 id="feedbackTitle">Attempt feedback</h1></div>
+        <div class="feedback-top-actions">
+          <span class="attempt-save-status" id="attemptSaveStatus" role="status" aria-live="polite">Not yet saved</span>
+          <button class="button button-primary" id="retryAttempt" type="button">Retry scenario</button>
+        </div>
+      </header>
+      <nav class="feedback-nav" aria-label="Feedback sections">
+        <a href="#feedbackOverview">Overview</a>
+        <a href="#feedbackProcessing">Case processing</a>
+        <a href="#feedbackInterview">Interview skills</a>
+        <a href="#feedbackReplay">Replay</a>
+        <a href="#feedbackPlan">Improvement plan</a>
+      </nav>
+      <main class="feedback-body" id="feedbackBody"></main>
+    </section>
+
+    <dialog class="exit-call-dialog" id="callExitDialog" aria-labelledby="callExitTitle">
+      <form method="dialog">
+        <span class="exit-dialog-icon material-symbols-rounded" aria-hidden="true">logout</span>
+        <h2 id="callExitTitle">Leave this attempt?</h2>
+        <p id="callExitMessage">Your entered case information will be saved without scoring.</p>
+        <div class="exit-dialog-actions">
+          <button class="button button-secondary" value="cancel">Keep working</button>
+          <button class="button button-primary" id="confirmCallExit" value="default">Save &amp; exit</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="write-dialog" id="writeDialog" aria-labelledby="writeDialogTitle">
+      <form method="dialog" id="writeForm">
+        <div class="dialog-topbar">
+          <div>
+            <span class="dialog-kicker" id="writeDialogKicker">Open Notebook write</span>
+            <h2 id="writeDialogTitle">Add a source</h2>
+          </div>
+          <button class="icon-button" type="button" data-close-write aria-label="Cancel and close">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        </div>
+        <p class="dialog-intro" id="writeDialogIntro">This creates a record in BlueOrigin Product Baseline. Nothing is written until you confirm.</p>
+        <div class="write-form-fields">
+          <div class="form-field" id="sourceTypeField">
+            <div class="field-heading"><label for="writeType">Source type</label><span class="required-label">Required</span></div>
+            <select id="writeType"><option value="link">URL</option><option value="upload">File / PDF</option><option value="text">Raw text</option></select>
+          </div>
+          <div class="form-field">
+            <div class="field-heading"><label for="writeTitle">Title</label><span class="required-label">Required</span></div>
+            <input id="writeTitle" required />
+          </div>
+          <div class="form-field" id="writeUrlField">
+            <div class="field-heading"><label for="writeUrl">URL</label><span class="required-label">Required</span></div>
+            <input id="writeUrl" type="url" placeholder="https://…" />
+          </div>
+          <div class="form-field" id="writeFileField" hidden>
+            <div class="field-heading"><label for="writeFile">File</label><span class="required-label">Required</span></div>
+            <input id="writeFile" type="file" accept=".pdf,.docx,.txt,.md,.html,.htm,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown,text/html" />
+          </div>
+          <div class="form-field full" id="writeContentField" hidden>
+            <div class="field-heading"><label for="writeContent">Content</label><span class="required-label">Required</span></div>
+            <textarea id="writeContent" rows="9" placeholder="Paste research, case facts, a specification, or an evaluation summary…"></textarea>
+          </div>
+          <div class="write-confirmation">
+            <span class="confirmation-icon">!</span>
+            <div><strong>Create approval required</strong><p id="writeConfirmationText">Confirming will create a source in the local Open Notebook. Delete and settings tools are not exposed.</p></div>
+          </div>
+        </div>
+        <div class="write-dialog-footer">
+          <button class="button button-secondary" type="button" data-close-write>Cancel</button>
+          <button class="button button-primary" id="confirmWrite" value="default">Confirm create</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="write-dialog hume-config-dialog" id="humeConfigDialog" aria-labelledby="humeConfigTitle">
+      <form id="humeConfigForm">
+        <div class="dialog-topbar">
+          <div>
+            <span class="dialog-kicker">Live voice configuration</span>
+            <h2 id="humeConfigTitle">Connect Hume EVI</h2>
+          </div>
+          <button class="icon-button" type="button" data-close-hume-config aria-label="Cancel and close">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        </div>
+        <p class="dialog-intro">Enter three different values from Hume. Credentials are validated server-side and stored only in a protected local file.</p>
+        <div class="write-form-fields hume-config-fields">
+          <div class="form-field full">
+            <div class="field-heading"><label for="humeApiKey">API key</label><span class="required-label">Account key</span></div>
+            <input id="humeApiKey" name="api_key" type="password" autocomplete="off" required />
+            <small>From Hume → Developers → API keys.</small>
+          </div>
+          <div class="form-field full">
+            <div class="field-heading"><label for="humeSecretKey">Secret key</label><span class="required-label">Account secret</span></div>
+            <input id="humeSecretKey" name="secret_key" type="password" autocomplete="off" required />
+            <small>This is paired with the API key. It is not the Config ID.</small>
+          </div>
+          <div class="form-field full">
+            <div class="field-heading"><label for="humeConfigId">EVI Config ID</label><span class="required-label">UUID</span></div>
+            <input id="humeConfigId" name="config_id" inputmode="text" autocomplete="off" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" required />
+            <small>From Hume → Conversational AI → Build. Do not paste a signing or Secret key here.</small>
+          </div>
+          <div class="write-confirmation hume-security-note">
+            <span class="confirmation-icon material-symbols-rounded">lock</span>
+            <div><strong>Local-only secret storage</strong><p>The browser never receives the stored keys. It receives only a temporary Hume access token, which expires.</p></div>
+          </div>
+          <p class="hume-config-status" id="humeConfigStatus" role="status" aria-live="polite"></p>
+        </div>
+        <div class="write-dialog-footer">
+          <button class="button button-secondary" type="button" data-close-hume-config>Cancel</button>
+          <button class="button button-primary" id="saveHumeConfig" type="submit">Validate & connect</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="toast-region" id="toastRegion" role="status" aria-live="polite"></div>
+    <script src="integrated-case.js?v=20260729-dual-simulation-1"></script>
+    <script src="coach-engine.js?v=20260730-grounded-coach-1"></script>
+    <script src="vendor-html2canvas.min.js"></script>
+    <script src="vendor-jszip.min.js?v=3.10.1"></script>
+    <script src="vendor-docx-preview.min.js?v=0.4.0"></script>
+    <script src="lighthouse.js?v=20260730-lighthouse-1"></script>
+    <script src="vendor-hume-evi.js?v=0.16.0"></script>
+    <script src="hume-browser-runtime.js?v=20260730-hume-session-resilience-1"></script>
+    <script src="app.js?v=20260730-hume-session-resilience-1"></script>
+  <script src="artifact-studio.js?v=20260730-grounded-notebook-1"></script>
+    <script src="simulation-authoring.js?v=20260730-caller-brief-1"></script>
+  </body>
+</html>

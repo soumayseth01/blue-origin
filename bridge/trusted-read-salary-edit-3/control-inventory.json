@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "kind": "google-docs-trusted-read-context",
+  "target": {
+    "documentId": "15YjipX00FMceUiwJsKc3CpHb22CFxopoHAKH5jmvQ0s",
+    "title": "HSG NewCo — Founding CEO Alignment Memo",
+    "revisionId": "AIroW37FH5oYVyhG6dk6GuSR6ix60gEPvG9crr8kymMrxl_ICIsHd4kFiocYCHT3yg-CDZwiRCXj_BnyX5S8ewpMM8CC5H5jU7Dn7odZFc8",
+    "documentUrl": "https://docs.google.com/document/d/15YjipX00FMceUiwJsKc3CpHb22CFxopoHAKH5jmvQ0s",
+    "selectedTabId": "t.0"
+  },
+  "dropdownMetadata": {
+    "status": "unavailable",
+    "resolvedTool": null,
+    "authoritative": false,
+    "count": 0
+  },
+  "derivedControlInventory": {
+    "hasProtectedControls": false,
+    "authoritativeDropdownCount": 0,
+    "opaqueControlCount": 0,
+    "nativeElementCounts": {},
+    "tabsScanned": [
+      "t.0"
+    ],
+    "controls": [],
+    "nativeElements": []
+  },
+  "editGuidance": {
+    "advisoryOnly": true,
+    "requiresTargetedPreservation": false,
+    "recommendedBehavior": "No protected controls were detected in the scanned scope.",
+    "warnings": []
+  }
+}

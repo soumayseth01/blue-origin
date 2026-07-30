@@ -1,0 +1,13 @@
+.hume-config.json
+.hume-config-*.json
+__pycache__/
+.vercel/
+node_modules/
+.env
+.env.local
+.vercel
+.env*
+!.env.example
+FAA-*.pdf
+AZ-CNAP-Manual-Customer-Home.*
+AZ-How-to-Apply-Nutrition-Assistance.pdf
