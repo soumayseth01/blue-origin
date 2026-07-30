@@ -17,6 +17,7 @@
     { "source": "/api/studio/notebooks/:id/artifacts", "destination": "/api/studio/router?action=notebook-artifacts&id=:id" },
     { "source": "/api/studio/notebooks/:id/exports/:format", "destination": "/api/studio/router?action=notebook-export&id=:id&format=:format" },
     { "source": "/api/studio/notebooks/:id/video", "destination": "/api/studio/router?action=notebook-video&id=:id" },
+    { "source": "/api/studio/notebooks/:id/video-file", "destination": "/api/studio/router?action=notebook-video-file&id=:id" },
     { "source": "/api/studio/notebooks/:id/review", "destination": "/api/studio/router?action=notebook-review&id=:id" },
     { "source": "/api/studio/notebooks/:id/publish", "destination": "/api/studio/router?action=notebook-publish&id=:id" },
     { "source": "/api/studio/notebooks/:id/archive", "destination": "/api/studio/router?action=notebook-archive&id=:id" },

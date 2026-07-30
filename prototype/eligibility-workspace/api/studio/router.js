@@ -59,6 +59,7 @@ function routePath(req) {
     "notebook-artifacts": ["notebooks", String(req.query.id || ""), "artifacts"],
     "notebook-export": ["notebooks", String(req.query.id || ""), "exports", String(req.query.format || "")],
     "notebook-video": ["notebooks", String(req.query.id || ""), "video"],
+    "notebook-video-file": ["notebooks", String(req.query.id || ""), "video-file"],
     "notebook-review": ["notebooks", String(req.query.id || ""), "review"],
     "notebook-publish": ["notebooks", String(req.query.id || ""), "publish"],
     "notebook-archive": ["notebooks", String(req.query.id || ""), "archive"],
@@ -102,6 +103,10 @@ async function notebookRoute(req, res, parts) {
   else if (action === "video" && req.method === "GET") {
     const { refreshNotebookVideo } = await import("../_lib/notebook-video.js");
     return send(res, 200, await refreshNotebookVideo(id));
+  }
+  else if (action === "video-file" && ["GET", "HEAD"].includes(req.method)) {
+    const { sendNotebookVideo } = await import("../_lib/notebook-video.js");
+    return sendNotebookVideo(res, id, { headOnly: req.method === "HEAD" });
   }
   else if (action === "review" && req.method === "POST") return send(res, 200, await setNotebookReview(id));
   else if (action === "publish" && req.method === "POST") return send(res, 200, await publishNotebook(id, requestBody(req)));

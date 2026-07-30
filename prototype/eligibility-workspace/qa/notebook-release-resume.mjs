@@ -60,7 +60,8 @@ try {
 
   const srt = await context.request.get(`${baseURL}/api/studio/notebooks/${notebookId}/exports/srt`);
   assert.equal(srt.status(), 200);
-  const videoHead = await context.request.head(persisted.artifact_projects.video.download_url);
+  const videoURL = new URL(persisted.artifact_projects.video.download_url, baseURL).href;
+  const videoHead = await context.request.head(videoURL);
   assert.equal(videoHead.status(), 200);
 
   const evidence = {
@@ -74,7 +75,7 @@ try {
     video_derived_from_version: persisted.artifact_projects.video.derived_from.version,
     video_status: persisted.artifact_projects.video.status,
     heygen_video_id: persisted.artifact_projects.video.heygen.video_id,
-    video_url: persisted.artifact_projects.video.download_url,
+    video_url: videoURL,
     review_due_at: persisted.review_due_at,
     release_count: persisted.artifact_releases.length,
     source_count: persisted.sources.length,

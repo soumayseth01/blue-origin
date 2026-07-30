@@ -1,4 +1,5 @@
-import { put } from "@vercel/blob";
+import { get, put } from "@vercel/blob";
+import { Readable } from "node:stream";
 import { getNotebook, updateNotebookArtifacts } from "./notebooks.js";
 
 function failure(message, statusCode = 502, details = null) {
@@ -104,8 +105,10 @@ export async function refreshNotebookVideo(notebookId) {
       try {
         const response = await fetch(downloadUrl, { signal: AbortSignal.timeout(55_000) });
         if (response.ok) {
-          const blob = await put(`notebook-releases/${notebookId}/${videoId}.mp4`, response.body, { access: "public", contentType: "video/mp4", addRandomSuffix: false, token: process.env.BLOB_READ_WRITE_TOKEN });
-          downloadUrl = blob.url;
+          const blob = await put(`notebook-releases/${notebookId}/${videoId}.mp4`, response.body, { access: "private", contentType: "video/mp4", addRandomSuffix: false, allowOverwrite: true, token: process.env.BLOB_READ_WRITE_TOKEN });
+          project.archive_pathname = blob.pathname;
+          downloadUrl = `/api/studio/notebooks/${notebookId}/video-file`;
+          delete project.heygen.archive_warning;
         }
       } catch (error) {
         project.heygen.archive_warning = `Private archive copy failed: ${error.message}`;
@@ -122,4 +125,22 @@ export async function refreshNotebookVideo(notebookId) {
     project.error = status.failure_message || status.failure_code || "HeyGen video generation failed";
   } else project.status = "generating";
   return updateNotebookArtifacts(notebookId, { action: "save_project", format: "video", project });
+}
+
+export async function sendNotebookVideo(res, notebookId, { headOnly = false } = {}) {
+  const notebook = await getNotebook(notebookId);
+  const project = notebook.artifact_projects?.video;
+  if (!project?.archive_pathname) failure("The stable video archive is not ready", 404);
+  const result = await get(project.archive_pathname, { access: "private", token: process.env.BLOB_READ_WRITE_TOKEN });
+  if (!result || result.statusCode !== 200) failure("The archived video could not be read", 404);
+  res.statusCode = 200;
+  res.setHeader("Content-Type", result.blob.contentType || "video/mp4");
+  res.setHeader("Content-Length", String(result.blob.size));
+  res.setHeader("Content-Disposition", `attachment; filename="${String(project.title || "notebook-video").replace(/[^a-z0-9._-]+/gi, "-")}.mp4"`);
+  res.setHeader("Cache-Control", "private, max-age=300");
+  if (headOnly) {
+    await result.stream.cancel();
+    return res.end();
+  }
+  return Readable.fromWeb(result.stream).pipe(res);
 }
