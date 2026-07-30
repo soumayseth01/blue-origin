@@ -24,7 +24,7 @@
     "quiz_html": { "http_status": 200, "bytes": 5240, "questions": 4 },
     "quiz_json": { "http_status": 200, "bytes": 4616, "questions": 4, "all_answers_valid": true, "all_questions_cited": true },
     "srt": { "http_status": 200, "bytes": 714, "scenes": 5 },
-    "mp4": { "status": "blocked", "reason": "The configured HeyGen API key returns 401 Unauthorized for avatar and voice inventory." }
+    "mp4": { "status": "blocked", "reason": "Direct credential validation returns 401 Unauthorized; the production HeyGen request also times out before inventory can be loaded." }
   },
   "release": {
     "presentation_version": 1,

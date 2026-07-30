@@ -11,12 +11,13 @@ function failure(message, statusCode = 502, details = null) {
 async function heygen(path, options = {}) {
   const key = process.env.HEYGEN_API_KEY;
   if (!key) failure("HeyGen is not configured for this deployment", 503);
+  const { timeoutMs = 25_000, ...fetchOptions } = options;
   let response;
   try {
     response = await fetch(`https://api.heygen.com${path}`, {
-      ...options,
-      headers: { accept: "application/json", "content-type": "application/json", "x-api-key": key, ...(options.headers || {}) },
-      signal: AbortSignal.timeout(25_000),
+      ...fetchOptions,
+      headers: { accept: "application/json", "content-type": "application/json", "x-api-key": key, ...(fetchOptions.headers || {}) },
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (error) {
     failure(`HeyGen connection failed: ${error.message}`, 502);
@@ -32,7 +33,7 @@ export async function notebookVideoHealth() {
   if (healthCache && Date.now() - healthCache.checkedAt < 300_000) return healthCache.value;
   let value;
   try {
-    const data = await heygen("/v2/avatars", { method: "GET" });
+    const data = await heygen("/v2/avatars", { method: "GET", timeoutMs: 4_000 });
     const count = (data.avatars || data.avatar_list || []).length;
     value = count ? { configured: true, healthy: true, error: null } : { configured: true, healthy: false, error: "No usable avatars are available" };
   } catch (error) {
