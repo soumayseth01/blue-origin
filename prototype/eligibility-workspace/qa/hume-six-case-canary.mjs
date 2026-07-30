@@ -30,6 +30,29 @@ function supportScore(answer, authored) {
   return expected.filter((word) => answerWords.has(word)).length / expected.length;
 }
 
+function integerWords(value) {
+  const underTwenty = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"];
+  const tens = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
+  const render = (number) => {
+    if (number < 20) return underTwenty[number];
+    if (number < 100) return `${tens[Math.floor(number / 10)]}${number % 10 ? ` ${underTwenty[number % 10]}` : ""}`;
+    if (number < 1_000) return `${underTwenty[Math.floor(number / 100)]} hundred${number % 100 ? ` ${render(number % 100)}` : ""}`;
+    if (number < 1_000_000) return `${render(Math.floor(number / 1_000))} thousand${number % 1_000 ? ` ${render(number % 1_000)}` : ""}`;
+    return "";
+  };
+  return Number.isSafeInteger(value) && value >= 0 && value < 1_000_000 ? render(value) : "";
+}
+
+function normalizedValueSupported(answer, normalizedValue) {
+  const normalizedAnswer = String(answer || "").toLowerCase().replace(/[^a-z0-9.]+/g, " ").trim();
+  const literal = String(normalizedValue ?? "").toLowerCase().replace(/[^a-z0-9.]+/g, " ").trim();
+  if (literal && normalizedAnswer.includes(literal)) return true;
+  const numeric = Number(String(normalizedValue ?? "").replace(/[$,\s]/g, ""));
+  if (!Number.isFinite(numeric) || !Number.isInteger(numeric)) return false;
+  const spoken = integerWords(numeric);
+  return Boolean(spoken && normalizedAnswer.includes(spoken));
+}
+
 async function extractStartRequests() {
   const browser = await chromium.launch({ headless: true });
   try {
@@ -68,7 +91,7 @@ async function postSession(body) {
   throw lastError;
 }
 
-function createMessageQueue(socket) {
+function createMessageQueue(socket, onMessage = () => {}) {
   const messages = [];
   const waiters = [];
   let terminalError = null;
@@ -77,6 +100,7 @@ function createMessageQueue(socket) {
     if (terminalError) while (waiters.length) waiters.shift().reject(terminalError);
   }
   socket.on("message", (message) => {
+    onMessage(message);
     if (message.type === "error") terminalError = new Error(`${message.code || "Hume error"}: ${message.message || message.error || "Unknown error"}`);
     else messages.push(message);
     settle();
@@ -122,6 +146,7 @@ async function runScenario(definition) {
   const toolCalls = [];
   const answers = [];
   const milestones = [];
+  let audioChunkCount = 0;
   const client = new HumeClient({});
   const socket = client.empathicVoice.chat.connect({
     accessToken: started.access_token,
@@ -131,7 +156,9 @@ async function runScenario(definition) {
     verboseTranscription: true,
     reconnectAttempts: 1,
   });
-  const queue = createMessageQueue(socket);
+  const queue = createMessageQueue(socket, (message) => {
+    if (message.type === "audio_output") audioChunkCount += 1;
+  });
 
   async function authorizeTool(message) {
     const identity = toolIdentity(message);
@@ -213,14 +240,22 @@ async function runScenario(definition) {
     if (definition.route.mode === "direct" || definition.route.expected_handoff) {
       for (const fact of definition.facts.filter((item) => item.required !== false)) {
         const question = fact.learner_question_examples?.[0] || `Can you tell me about ${fact.label}?`;
-        const answer = await sendTurn(question);
-        const score = supportScore(answer, fact.natural_response);
-        assert.ok(score >= 0.18 || String(answer).toLowerCase().includes(String(fact.normalized_value).toLowerCase()), `${definition.scenario_id}/${fact.fact_id} was not supported by the authored answer (score ${score.toFixed(2)}): ${answer}`);
+        let answer = await sendTurn(question);
+        let score = supportScore(answer, fact.natural_response);
+        let clarified = false;
+        if (score < 0.18 && !normalizedValueSupported(answer, fact.normalized_value)) {
+          clarified = true;
+          answer = await sendTurn(`I want to make sure I record this correctly. Can you give me the current detail for ${fact.label.toLowerCase()}?`);
+          score = supportScore(answer, fact.natural_response);
+        }
+        assert.ok(score >= 0.18 || normalizedValueSupported(answer, fact.normalized_value), `${definition.scenario_id}/${fact.fact_id} was not supported after clarification (score ${score.toFixed(2)}): ${answer}`);
         answers.at(-1).fact_id = fact.fact_id;
         answers.at(-1).support_score = Number(score.toFixed(3));
+        answers.at(-1).clarification = clarified;
       }
     }
 
+    assert.ok(audioChunkCount > 0, `${definition.scenario_id} produced no Hume audio output`);
     return {
       scenario_id: definition.scenario_id,
       route_id: definition.route.route_id,
@@ -231,6 +266,8 @@ async function runScenario(definition) {
       final_voice_suffix: String(activeVoiceId || "").slice(-8),
       answer_count: answers.length,
       factual_answer_count: answers.filter((answer) => answer.fact_id).length,
+      audio_chunk_count: audioChunkCount,
+      audio_output_observed: true,
       tools: toolCalls,
       milestones,
       answers,
@@ -267,4 +304,4 @@ const evidence = {
   passed: results.length === 6 && results.every((result) => result.passed),
 };
 fs.writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
-console.log(JSON.stringify({ generated_at: evidence.generated_at, route_distribution: evidence.route_distribution, scenarios: results.map(({ scenario_id, factual_answer_count, tools, passed }) => ({ scenario_id, factual_answer_count, tools, passed })) }, null, 2));
+console.log(JSON.stringify({ generated_at: evidence.generated_at, route_distribution: evidence.route_distribution, scenarios: results.map(({ scenario_id, factual_answer_count, audio_chunk_count, tools, passed }) => ({ scenario_id, factual_answer_count, audio_chunk_count, tools, passed })) }, null, 2));

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-30T19:55:58.666Z",
+  "generated_at": "2026-07-30T20:51:44.164Z",
   "base_url": "https://eligibility-workspace-nu.vercel.app",
   "scenarios": [
     {
@@ -12,19 +12,15 @@
       "final_voice_suffix": "84695e99",
       "answer_count": 19,
       "factual_answer_count": 18,
+      "audio_chunk_count": 35,
+      "audio_output_observed": true,
       "tools": [],
       "milestones": [
         "chat_metadata",
         "assistant_message",
         "audio_output",
         "audio_output",
-        "user_interruption",
-        "assistant_end",
-        "user_message",
         "assistant_prosody",
-        "assistant_message",
-        "audio_output",
-        "audio_output",
         "user_interruption",
         "assistant_end",
         "user_message",
@@ -120,6 +116,11 @@
         "user_message",
         "assistant_message",
         "audio_output",
+        "audio_output",
+        "user_interruption",
+        "assistant_end",
+        "user_message",
+        "assistant_message",
         "audio_output",
         "user_interruption",
         "assistant_end",
@@ -133,111 +134,129 @@
         },
         {
           "learner": "Are you married?",
-          "caller": "I'm separated. My husband does not live with us right now. Is there something specific you would like to know about my situation?",
+          "caller": "I'm separated. My husband does not live with us right now. Is there something specific you wanted to know about my situation?",
           "fact_id": "bo001-marital",
-          "support_score": 1
+          "support_score": 1,
+          "clarification": false
         },
         {
           "learner": "Do you file taxes?",
-          "caller": "Yes, I file taxes and claim both of my children. Is there anything else you'd like to know about my tax situation?",
+          "caller": "Yes, I file taxes and claim both of my children. Is there anything else you would like to know?",
           "fact_id": "bo001-tax",
-          "support_score": 1
+          "support_score": 1,
+          "clarification": false
         },
         {
           "learner": "Does anyone claim you as a dependent?",
-          "caller": "No, nobody else claims me as a tax dependent. Do you have any other questions about my situation?",
+          "caller": "No, nobody else claims me as a tax dependent. Is there anything else you'd like to ask?",
           "fact_id": "bo001-dependent",
-          "support_score": 1
+          "support_score": 1,
+          "clarification": false
         },
         {
           "learner": "What is Leo's date of birth?",
-          "caller": "Leo was born November third, two thousand eighteen. He's seven now. Do you have any other questions about my children?",
+          "caller": "Leo was born November third, two thousand eighteen. Do you have any other questions?",
           "fact_id": "bo001-leo-dob",
-          "support_score": 0.833
+          "support_score": 0.5,
+          "clarification": false
         },
         {
           "learner": "What is Sofia's date of birth?",
-          "caller": "Sofia's birthday is September fourteenth, two thousand twenty-two. She's three now. Is there anything else you'd like to ask?",
+          "caller": "Sofia's birthday is September fourteenth, two thousand twenty-two. Do you have any other questions?",
           "fact_id": "bo001-sofia-dob",
-          "support_score": 0.833
+          "support_score": 0.5,
+          "clarification": false
         },
         {
           "learner": "Who buys and prepares food together?",
-          "caller": "Yes, I buy and prepare food for myself and both children together. Is there anything else you'd like to discuss?",
+          "caller": "Yes, I buy and prepare food for myself and both children together. Is there anything else you would like to know?",
           "fact_id": "bo001-food",
-          "support_score": 1
+          "support_score": 1,
+          "clarification": false
         },
         {
           "learner": "What is your due date?",
-          "caller": "My due date is February eighteenth, twenty twenty-seven. Is there anything else you would like to know?",
+          "caller": "My due date is February eighteenth, twenty twenty-seven. Is there anything else you'd like to ask?",
           "fact_id": "bo001-due-date",
-          "support_score": 0.5
+          "support_score": 0.5,
+          "clarification": false
         },
         {
           "learner": "How many hours are you working now?",
-          "caller": "I'm getting about twenty-four hours a week now. Before the change, I was closer to thirty-five hours. Do you have any other questions?",
+          "caller": "I'm getting about twenty-four hours a week now. Is there anything else you'd like to know?",
           "fact_id": "bo001-hours",
-          "support_score": 1
+          "support_score": 0.667,
+          "clarification": false
         },
         {
           "learner": "How often are you paid?",
-          "caller": "I'm paid twice a month, usually around the middle and the end of the month. Do you have any other questions?",
+          "caller": "I'm paid twice a month, usually around the middle and the end of the month. Is there anything else you would like to ask?",
           "fact_id": "bo001-frequency",
-          "support_score": 1
+          "support_score": 1,
+          "clarification": false
         },
         {
           "learner": "What is your gross pay?",
-          "caller": "My gross pay is about nine hundred ten dollars each paycheck, before taxes come out. Is there anything else you'd like to know?",
+          "caller": "My gross pay is about nine hundred ten dollars each paycheck, before taxes come out. Is there anything else you would like to know?",
           "fact_id": "bo001-gross",
-          "support_score": 0.875
+          "support_score": 0.875,
+          "clarification": false
         },
         {
           "learner": "When did your hours change?",
           "caller": "The reduced schedule started June fifteenth, twenty twenty-six. That was the first week they cut my hours. Do you have any other questions?",
           "fact_id": "bo001-change-date",
-          "support_score": 1
+          "support_score": 1,
+          "clarification": false
         },
         {
           "learner": "How much is your rent?",
           "caller": "My full monthly rent is one thousand two hundred seventy-five dollars.",
           "fact_id": "bo001-rent",
-          "support_score": 0.333
+          "support_score": 0.333,
+          "clarification": false
         },
         {
           "learner": "Which utilities do you pay?",
           "caller": "I pay the electric bill separately from rent, and heat is included. Is there anything else you would like to know?",
           "fact_id": "bo001-utility-status",
-          "support_score": 1
+          "support_score": 1,
+          "clarification": false
         },
         {
           "learner": "How much is the electric bill?",
           "caller": "The electric bill is usually around one hundred forty-five dollars a month. Do you have any other questions?",
           "fact_id": "bo001-electric",
-          "support_score": 0.833
+          "support_score": 0.833,
+          "clarification": false
         },
         {
           "learner": "Do you pay for childcare?",
-          "caller": "Yes, I pay three hundred twenty dollars a month for childcare so I can work. Do you have any other questions?",
+          "caller": "Yes, I pay three hundred twenty dollars a month for childcare so I can work. Is there anything else you would like to know?",
           "fact_id": "bo001-care",
-          "support_score": 0.833
+          "support_score": 0.833,
+          "clarification": false
         },
         {
           "learner": "Do you have any bank accounts or cash?",
           "caller": "I have one checking account, and there's about two hundred ten dollars in it right now.",
           "fact_id": "bo001-resources",
-          "support_score": 0.333
+          "support_score": 0.333,
+          "clarification": false
         },
         {
           "learner": "What is the current checking balance?",
           "caller": "The current checking balance is about two hundred ten dollars. Is there anything else you would like to know?",
           "fact_id": "bo001-checking",
-          "support_score": 0.333
+          "support_score": 0.333,
+          "clarification": false
         },
         {
           "learner": "Do you have other health coverage?",
-          "caller": "No, I don't have any other health insurance right now. Would you like to know anything else?",
+          "caller": "No, I don't have any other health insurance right now. Is there something else you would like to ask?",
           "fact_id": "bo001-coverage",
-          "support_score": 1
+          "support_score": 1,
+          "clarification": false
         }
       ],
       "passed": true
@@ -252,6 +271,8 @@
       "final_voice_suffix": "b31516ee",
       "answer_count": 16,
       "factual_answer_count": 15,
+      "audio_chunk_count": 30,
+      "audio_output_observed": true,
       "tools": [],
       "milestones": [
         "chat_metadata",
@@ -340,6 +361,7 @@
         "user_interruption",
         "assistant_end",
         "user_message",
+        "assistant_prosody",
         "assistant_message",
         "audio_output",
         "audio_output",
@@ -355,93 +377,108 @@
         },
         {
           "learner": "Are you married?",
-          "caller": "I'm divorced. Nia's mother and I do not live together. How about you?",
+          "caller": "I'm divorced. Nia's mother and I do not live together. Is there anything else you'd like to know?",
           "fact_id": "bo002-marital",
-          "support_score": 1
+          "support_score": 1,
+          "clarification": false
         },
         {
           "learner": "What is Nia's date of birth?",
-          "caller": "Nia was born on March twenty-second, two thousand ten. She's sixteen now! What else would you like to know?",
+          "caller": "Nia was born on March twenty-second, two thousand ten. Is there anything else you'd like to ask?",
           "fact_id": "bo002-nia-dob",
-          "support_score": 0.833
+          "support_score": 0.5,
+          "clarification": false
         },
         {
           "learner": "When did Nia move in?",
-          "caller": "Nia moved back in on July first, two thousand twenty-six. She has been here full time since then. Is there anything else you're curious about?",
+          "caller": "Nia moved back in on July first, two thousand twenty-six. Is there anything else you want to know?",
           "fact_id": "bo002-move-date",
-          "support_score": 1
+          "support_score": 0.273,
+          "clarification": false
         },
         {
           "learner": "What is the custody arrangement?",
-          "caller": "Nia's primary home is with me now. She visits her mother on some weekends. Is there anything else you'd like to ask?",
+          "caller": "Nia's primary home is with me now, and she visits her mother on some weekends. Do you have any other questions?",
           "fact_id": "bo002-custody",
-          "support_score": 1
+          "support_score": 1,
+          "clarification": false
         },
         {
           "learner": "Do you buy and prepare food together?",
-          "caller": "Yes, Nia and I buy and prepare our meals together. It's a nice way for us to spend time. Do you cook often?",
+          "caller": "Yes, Nia and I buy and prepare our meals together. Is there anything else you'd like to ask?",
           "fact_id": "bo002-food",
-          "support_score": 1
+          "support_score": 1,
+          "clarification": false
         },
         {
           "learner": "Will you claim Nia as a dependent?",
           "caller": "Yes, I expect to claim Nia as a dependent on my taxes this year. Do you have any other questions?",
           "fact_id": "bo002-dependent",
-          "support_score": 1
+          "support_score": 1,
+          "clarification": false
         },
         {
           "learner": "What is your hourly wage?",
-          "caller": "The warehouse pays me fifteen dollars an hour. How about you? What do you do for work?",
+          "caller": "The warehouse pays me fifteen dollars an hour. Do you have any other questions?",
           "fact_id": "bo002-rate",
-          "support_score": 1
+          "support_score": 1,
+          "clarification": false
         },
         {
           "learner": "How many hours do you work each week?",
-          "caller": "I'm averaging about thirty-eight hours each week. How about you? Do you work a lot?",
+          "caller": "I'm averaging about thirty-eight hours each week. Is there anything else you would like to know?",
           "fact_id": "bo002-hours",
-          "support_score": 1
+          "support_score": 1,
+          "clarification": false
         },
         {
           "learner": "How often are you paid?",
-          "caller": "I'm paid every two weeks. It helps with budgeting! How often do you get paid?",
+          "caller": "I'm paid every two weeks. Do you have any other questions?",
           "fact_id": "bo002-frequency",
-          "support_score": 1
+          "support_score": 1,
+          "clarification": false
         },
         {
           "learner": "What is the gross amount of a normal check?",
-          "caller": "A normal gross paycheck is about one thousand one hundred forty dollars before taxes. Do you have any other questions?",
+          "caller": "A normal gross paycheck is about one thousand one hundred forty dollars before taxes. Is there anything else you'd like to know?",
           "fact_id": "bo002-gross",
-          "support_score": 0.8
+          "support_score": 0.8,
+          "clarification": false
         },
         {
           "learner": "When did the job start?",
-          "caller": "I started the new job on July eighth, two thousand twenty-six. Do you have any other questions about my job?",
+          "caller": "I started the new job on July eighth, two thousand twenty-six. Is there anything else you'd like to know?",
           "fact_id": "bo002-start",
-          "support_score": 1
+          "support_score": 1,
+          "clarification": false
         },
         {
           "learner": "What is your current rent?",
-          "caller": "The rent is one thousand four hundred forty dollars now. The increase began this month. Do you have any other questions?",
+          "caller": "The rent is one thousand four hundred forty dollars now. Is there anything else you'd like to ask?",
           "fact_id": "bo002-rent",
-          "support_score": 0.833
+          "support_score": 0.333,
+          "clarification": false
         },
         {
           "learner": "Which utilities do you pay?",
-          "caller": "I pay the heating bill separately from rent. If you have any other questions about utilities or anything else, feel free to ask!",
+          "caller": "I pay the heating bill separately from rent. Is there anything else you would like to know?",
           "fact_id": "bo002-utility-status",
-          "support_score": 1
+          "support_score": 1,
+          "clarification": false
         },
         {
           "learner": "How much is the heating bill?",
-          "caller": "The heating bill is averaging about one hundred sixty-five dollars a month. If you have more questions, feel free to ask!",
+          "caller": "The heating bill is averaging about one hundred sixty-five dollars a month. Is there anything else you'd like to know?",
           "fact_id": "bo002-heating",
-          "support_score": 0.8
+          "support_score": 0.8,
+          "clarification": false
         },
         {
           "learner": "Does anyone have other health coverage?",
-          "caller": "No, neither Nia nor I have other health coverage. If you have more questions, just let me know!",
+          "caller": "No, neither Nia nor I have other health coverage. Is there anything else you'd like to ask?",
           "fact_id": "bo002-coverage",
-          "support_score": 1
+          "support_score": 1,
+          "clarification": false
         }
       ],
       "passed": true
@@ -454,8 +491,10 @@
       "hume_context_size_bytes": 8642,
       "initial_voice_suffix": "7ead3663",
       "final_voice_suffix": "84695e99",
-      "answer_count": 6,
+      "answer_count": 7,
       "factual_answer_count": 4,
+      "audio_chunk_count": 10,
+      "audio_output_observed": true,
       "tools": [
         {
           "name": "request_contact_handoff",
@@ -474,6 +513,11 @@
         "user_message",
         "tool_call",
         "assistant_end",
+        "assistant_message",
+        "audio_output",
+        "user_interruption",
+        "assistant_end",
+        "user_message",
         "assistant_message",
         "audio_output",
         "audio_output",
@@ -507,31 +551,39 @@
         },
         {
           "learner": "Hello, this is Soumay calling from County Services. May I speak with Danielle Reed?",
-          "caller": "Hello, Soumay! How can I assist you today?"
+          "caller": "Hi Soumay, how can I assist you today?"
         },
         {
           "learner": "Is everyone still at home?",
-          "caller": "Yes, it's still just me and my son at home. No one has moved in or out. Is there anything specific you need to know?",
+          "caller": "Yes, it's still me and my son at home. No one has moved in or out. Is there anything else you need to know?",
           "fact_id": "bo-003-household",
-          "support_score": 1
+          "support_score": 1,
+          "clarification": false
         },
         {
           "learner": "Are wages unchanged?",
-          "caller": "Yes, my wages are unchanged. I still work at the school cafeteria, and my gross pay averages one thousand five hundred ninety dollars a month. Is there anything else you would like to know?",
+          "caller": "Yes, my wages are unchanged. I'm still working at the school cafeteria, and my gross pay averages one thousand five hundred ninety dollars a month. Do you need any more information?",
           "fact_id": "bo-003-income",
-          "support_score": 0.875
+          "support_score": 0.875,
+          "clarification": false
         },
         {
           "learner": "Any coverage changes?",
-          "caller": "No, there are no coverage changes. Neither of us has other health coverage at this time. Is there anything else you would like to ask?",
+          "caller": "No, there haven't been any changes in coverage. Neither my son nor I have other health coverage. Is there anything else you would like to ask?",
           "fact_id": "bo-003-pregnancy",
-          "support_score": 1
+          "support_score": 0.8,
+          "clarification": false
         },
         {
           "learner": "Are deductions current?",
-          "caller": "I'm not sure about the current deductions. I would need to check that detail before giving you an answer. Is there anything else you would like to discuss?",
+          "caller": "I'm not sure about the current deductions. I would need to check and get back to you on that detail. Is there anything else you'd like to know?"
+        },
+        {
+          "learner": "I want to make sure I record this correctly. Can you give me the current detail for expenses?",
+          "caller": "Currently, my expenses are as follows: my rent is still nine hundred eighty dollars, and after-school care is now one hundred eighty dollars. Is there anything else you need?",
           "fact_id": "bo-003-expenses",
-          "support_score": 0
+          "support_score": 0.75,
+          "clarification": true
         }
       ],
       "passed": true
@@ -546,6 +598,8 @@
       "final_voice_suffix": "b31516ee",
       "answer_count": 6,
       "factual_answer_count": 4,
+      "audio_chunk_count": 9,
+      "audio_output_observed": true,
       "tools": [
         {
           "name": "request_contact_handoff",
@@ -566,10 +620,11 @@
         "assistant_end",
         "assistant_message",
         "audio_output",
-        "assistant_prosody",
+        "audio_output",
         "user_interruption",
         "assistant_end",
         "user_message",
+        "assistant_prosody",
         "assistant_message",
         "audio_output",
         "audio_output",
@@ -597,31 +652,35 @@
         },
         {
           "learner": "Hello, this is Soumay calling from County Services. May I speak with Robert Chen?",
-          "caller": "How can I help you today?"
+          "caller": "Hello, Soumay. How can I assist you today?"
         },
         {
           "learner": "Who is on your tax return?",
-          "caller": "I file jointly with my wife and we also claim our son on the tax return. Is there anything else you would like to know?",
+          "caller": "I file jointly with my wife and claim our son on our tax return. Is there anything else you would like to know?",
           "fact_id": "bo-004-household",
-          "support_score": 1
+          "support_score": 1,
+          "clarification": false
         },
         {
           "learner": "What is monthly income?",
-          "caller": "Our expected taxable income is about two thousand one hundred forty dollars each month. Is there anything else you need?",
+          "caller": "Our expected taxable income works out to about two thousand one hundred forty dollars each month. Is there anything else you need?",
           "fact_id": "bo-004-income",
-          "support_score": 0.667
+          "support_score": 0.889,
+          "clarification": false
         },
         {
           "learner": "Does anyone have a disability?",
-          "caller": "Yes, I receive dialysis and have applied for disability benefits last month. Do you need any more information on that?",
+          "caller": "Yes, I receive dialysis and have applied for disability benefits last month. Do you have any other questions?",
           "fact_id": "bo-004-pregnancy",
-          "support_score": 1
+          "support_score": 1,
+          "clarification": false
         },
         {
           "learner": "Any other coverage?",
-          "caller": "My old employer coverage ended two months ago, so I currently do not have any other coverage. Is there anything else you would like to ask?",
+          "caller": "My old employer coverage ended two months ago, so I currently don't have any other coverage. Is there anything else you would like to know?",
           "fact_id": "bo-004-expenses",
-          "support_score": 1
+          "support_score": 1,
+          "clarification": false
         }
       ],
       "passed": true
@@ -636,6 +695,8 @@
       "final_voice_suffix": "3a0f1453",
       "answer_count": 3,
       "factual_answer_count": 0,
+      "audio_chunk_count": 3,
+      "audio_output_observed": true,
       "tools": [
         {
           "name": "record_callback_message",
@@ -669,11 +730,11 @@
         },
         {
           "learner": "Hello, this is Soumay calling from County Services. May I speak with Elena Vega?",
-          "caller": "Elena Vega is currently unavailable. She is not at her location right now, but she will be available for a callback today between four PM and six PM. Would you like to leave a message for her?"
+          "caller": "I'm sorry, but Elena Vega is currently unavailable. You can reach her today between four PM and six PM. Would you like to leave a message for her?"
         },
         {
           "learner": "Please tell them Soumay from County Services called. My callback number is 555-0142, and I am requesting a return call.",
-          "caller": "I've recorded your message for Elena. She'll get back to you as soon as she can. Is there anything else you need?"
+          "caller": "I've recorded your message. Thank you for reaching out, and Elena will get back to you as soon as she can. Is there anything else I can assist you with?"
         }
       ],
       "passed": true
@@ -688,15 +749,16 @@
       "final_voice_suffix": "833aaf0e",
       "answer_count": 3,
       "factual_answer_count": 0,
+      "audio_chunk_count": 3,
+      "audio_output_observed": true,
       "tools": [],
       "milestones": [
         "chat_metadata",
         "assistant_message",
         "audio_output",
-        "audio_output",
+        "assistant_prosody",
         "user_interruption",
         "assistant_end",
-        "assistant_prosody",
         "user_message",
         "assistant_message",
         "audio_output",
@@ -717,7 +779,7 @@
         },
         {
           "learner": "May I leave a message about the application?",
-          "caller": "I'm sorry, but I can't accept messages at this time. Tasha will be available to talk tomorrow after ten AM."
+          "caller": "I'm sorry, but I can't accept messages. Tasha will be available to talk tomorrow after ten AM, so you can reach out then."
         }
       ],
       "passed": true

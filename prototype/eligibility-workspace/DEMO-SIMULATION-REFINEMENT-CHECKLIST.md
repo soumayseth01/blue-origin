@@ -54,10 +54,12 @@
 - [x] Run a full factual question matrix for all six callers in live Hume text mode.
 - [x] Run live Hume handoff canaries for BO-003 and BO-004, including actual voice/context change.
 - [x] Run live unavailable-contact/message canaries for BO-005 and BO-006.
+- [x] Record explicit Hume audio-chunk delivery for all six cases and fail the matrix when a case produces no audio output.
+- [x] Provide a repeatable Safari/Chrome human-audio worksheet and evidence record.
 - [x] Complete an end-to-end BO-001 and BO-002 interview through field entry, evidence, authored outcome, notices, authorization, and results.
 - [ ] Perform human-audible Safari and Chrome canaries for direct, handoff, and unavailable routes.
 - [x] Deploy the transcript-to-fact synchronization change to Vercel and repeat the full six-case browser suite against production.
 
 ## Current implementation focus
 
-All automated release gates are complete. The remaining gate is a supervised human-audible pass in current Safari and Chrome for direct, handoff, and unavailable routes; automated checks can prove that Hume produced and delivered audio events, but cannot certify what a person hears through the selected device.
+All automated release gates are complete. The current six-case production matrix records 35, 30, 10, 9, 3, and 3 Hume audio chunks for BO-001 through BO-006 respectively. The remaining gate is the supervised procedure in `qa/HUMAN-AUDIO-CANARY-CHECKLIST.md`: a person must confirm current Safari and Chrome playback for direct, handoff, and unavailable routes because automated checks cannot certify what reaches the selected output device.

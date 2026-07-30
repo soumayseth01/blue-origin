@@ -1,0 +1,41 @@
+{
+  "status": "pending_human_confirmation",
+  "production_url": "https://eligibility-workspace-nu.vercel.app",
+  "required_routes": [
+    "direct",
+    "handoff",
+    "unavailable"
+  ],
+  "browsers": {
+    "safari": {
+      "browser_version": null,
+      "output_device": null,
+      "tester": null,
+      "tested_at": null,
+      "checks": {
+        "BO-001_direct": "pending",
+        "BO-003_handoff": "pending",
+        "BO-005_unavailable": "pending"
+      },
+      "notes": []
+    },
+    "chrome": {
+      "browser_version": null,
+      "output_device": null,
+      "tester": null,
+      "tested_at": null,
+      "checks": {
+        "BO-001_direct": "pending",
+        "BO-003_handoff": "pending",
+        "BO-005_unavailable": "pending"
+      },
+      "notes": []
+    }
+  },
+  "automated_evidence": {
+    "matrix": "qa/evidence/hume-six-case-canary.json",
+    "audio_output_observed": true,
+    "human_audibility_proven": false
+  },
+  "release_gate_passed": false
+}
