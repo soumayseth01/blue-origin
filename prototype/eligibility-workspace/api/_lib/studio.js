@@ -138,14 +138,13 @@ export const citationSchema = {
 export const briefPointSchema = {
   type: "object",
   properties: {
-    point_id: { type: "string" }, statement: { type: "string" },
+    statement: { type: "string" },
     intended_use: { type: "string", enum: ["key_fact", "procedure", "warning", "objective", "example", "quiz_concept", "supporting_detail"] },
     priority: { type: "string", enum: ["required", "optional", "supporting"] },
     citations: { type: "array", items: citationSchema },
     provenance: { type: "string", enum: ["directly_sourced", "ai_rewritten_from_sources", "ai_interpretation", "author_input", "author_override", "unsupported_draft_requiring_review"] },
-    author_notes: { type: "string" }, review_status: { type: "string", enum: ["candidate", "edited", "reviewed"] },
   },
-  required: ["point_id", "statement", "intended_use", "priority", "citations", "provenance", "author_notes", "review_status"],
+  required: ["statement", "intended_use", "priority", "citations", "provenance"],
   additionalProperties: false,
 };
 
