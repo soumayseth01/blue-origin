@@ -54,6 +54,7 @@ assert.ok(HUME_TOOL_DEFINITIONS.every((tool) => !("additionalProperties" in JSON
 assert.deepEqual(sanitizeHumeClientDiagnostic({ phase: "connect_hume", code: "socket_close", browser_family: "Safari", elapsed_ms: 18123, close_code: 1006, error_name: "Error", token: "must-not-leak", transcript: "must-not-leak" }), { phase: "connect_hume", code: "socket_close", browser_family: "Safari", elapsed_ms: 18123, close_code: 1006, error_name: "Error" });
 assert.deepEqual(HUME_TOOL_DEFINITIONS.map((tool) => tool.name), ["request_case_response", "request_contact_handoff", "record_callback_message"]);
 assert.match(HUME_TOOL_DEFINITIONS.find((tool) => tool.name === "request_contact_handoff").description, /MANDATORY/);
+assert.match(HUME_TOOL_DEFINITIONS.find((tool) => tool.name === "record_callback_message").description, /MANDATORY/);
 const naturalToolConfig = { turn_detection: { end_of_turn_silence_ms: 2000, speech_detection_threshold: 0.5, prefix_padding_ms: 300 }, interruption: { min_interruption_ms: 1200 }, ellm_model: { allow_short_responses: false }, language_model: { model_provider: "OPEN_AI", model_resource: "gpt-4o-mini" }, builtin_tools: [], nudges: { enabled: false }, timeouts: { inactivity: { enabled: true, duration_secs: 180 }, max_duration: { enabled: true, duration_secs: 1800 } } };
 assert.ok(Object.values(humeConfigChecks(naturalToolConfig)).every(Boolean));
 assert.equal(humeConfigChecks({ ...naturalToolConfig, language_model: null }).tool_capable_language_model, false);
