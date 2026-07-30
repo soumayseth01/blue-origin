@@ -146,10 +146,11 @@ try {
   await page.locator('[data-nj-crop="x"]').evaluate((input) => { input.value = "70"; input.dispatchEvent(new Event("input", { bubbles: true })); });
   await shot(12, "image-asset-drawer", ".nj-assetdrawer");
   await page.locator('[data-nj-action^="use-asset:presentation:"]').click();
-  await page.waitForFunction(() => state.notebookJourney.modal === null);
+  await page.locator(".nj-assetdrawer").waitFor({ state: "detached" });
   const afterImageUse = await json(await context.request.get(`${baseURL}/api/studio/notebooks/${notebookId}`));
-  assert.equal(afterImageUse.artifact_projects.presentation.slides[0].image.crop.zoom, 1.4);
-  assert.equal(afterImageUse.artifact_projects.presentation.slides[0].image.crop.x, 70);
+  const imageSlide = afterImageUse.artifact_projects.presentation.slides.find((slide) => slide.image);
+  assert.equal(imageSlide.image.crop.zoom, 1.4);
+  assert.equal(imageSlide.image.crop.x, 70);
   await page.reload({ waitUntil: "networkidle" });
   if (await page.locator('[data-nj-open-output="presentation"]').count()) await page.locator('[data-nj-open-output="presentation"]').click();
   if (!(await page.locator(".nj-slideimage img").count())) {
