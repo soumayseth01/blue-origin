@@ -127,11 +127,11 @@ function sourceSignature(sources) {
   return crypto.createHash("sha256").update(values.join("|")).digest("hex");
 }
 
-function boundedBlocks(groups, { question = "", maxCharacters = 70_000, maxBlocks = 40 } = {}) {
+function boundedBlocks(groups, { question = "", maxCharacters = 24_000, maxBlocks = 18 } = {}) {
   const terms = [...new Set(String(question).toLowerCase().match(/[a-z0-9]{3,}/g) || [])];
   const scored = groups.flatMap(({ source, blocks }) => blocks.map((block, index) => ({
     ...block,
-    exact_text: block.exact_text.slice(0, 4000),
+    exact_text: block.exact_text.slice(0, 2400),
     _sourceOrder: index,
     _score: terms.reduce((score, term) => score + (`${block.title} ${block.exact_text}`.toLowerCase().includes(term) ? 1 : 0), 0),
     _sourceTitle: source.source_title,
