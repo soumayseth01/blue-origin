@@ -140,6 +140,7 @@ async function runScenario(page, index) {
   await page.evaluate(() => endLiveCall({ submit: true }));
   await page.waitForFunction(() => Boolean(state.latestAttempt) && state.submitted && state.callEnded);
   await page.locator("#feedbackView").waitFor({ state: "visible" });
+  if (/^https:\/\//i.test(baseURL)) await page.waitForFunction(() => state.attemptSyncStatus === "saved", null, { timeout: 120_000 });
 
   const attempt = await page.evaluate(() => ({
     attempt_id: state.latestAttempt.attempt_id,
@@ -156,6 +157,7 @@ async function runScenario(page, index) {
     event_count: state.latestAttempt.events.length,
     voice_turn_count: state.latestAttempt.voice_turns.length,
     completion_state: state.latestAttempt.attempt_exit.completion_state,
+    sync_status: state.attemptSyncStatus,
     sync_payload_bytes: {
       metadata: new Blob([JSON.stringify(attemptMetadata(state.latestAttempt))]).size,
       transcript: new Blob([JSON.stringify(state.latestAttempt.voice_turns || [])]).size,
@@ -201,6 +203,7 @@ async function runScenario(page, index) {
   }
   if (errors.length) console.error("Browser console errors:", errors, "Failed responses:", failedResponses);
   assert.deepEqual(errors, []);
+  if (/^https:\/\//i.test(baseURL)) assert.deepEqual(failedResponses, []);
   const evidence = {
     generated_at: new Date().toISOString(),
     base_url: baseURL,

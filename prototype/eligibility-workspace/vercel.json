@@ -29,6 +29,7 @@
     { "source": "/api/studio/source-context/ask", "destination": "/api/studio/router?action=source-context" },
     { "source": "/api/studio/content-brief/generate", "destination": "/api/studio/router?action=brief-generate" },
     { "source": "/api/studio/content-brief/edit", "destination": "/api/studio/router?action=brief-edit" },
+    { "source": "/api/studio/coach/recommend", "destination": "/api/studio/router?action=coach/recommend" },
     { "source": "/api/studio/projects", "destination": "/api/studio/router?action=projects" },
     { "source": "/api/studio/renders", "destination": "/api/studio/router?action=renders" },
     { "source": "/api/studio/releases", "destination": "/api/studio/router?action=releases" },
