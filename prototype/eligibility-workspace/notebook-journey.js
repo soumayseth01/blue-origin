@@ -71,7 +71,11 @@ function njRenderLibrary() {
 function njRenderModal() {
   const journey = state.notebookJourney;
   const notebook = njNotebook();
-  if (journey.modal === "create") return `<div class="nj-modalshade"><form class="nj-modal" id="njCreateForm"><header><div><span class="nj-eyebrow">New notebook</span><h2>What are you creating today?</h2><p>Describe the outcome in one sentence. We will suggest the title, audience, and starting structure.</p></div><button type="button" data-nj-action="close-modal">×</button></header><main><label>What should this notebook help someone do?<textarea id="njCreatePrompt" required minlength="8" maxlength="500" aria-describedby="njCreatePromptHelp" placeholder="Example: Help eligibility workers understand when and how households must report changes.">${escapeHTML(journey.createPrompt || "")}</textarea><small id="njCreatePromptHelp" class="nj-field-help"><span>Your description is saved if the service needs to retry.</span><span id="njCreatePromptCount">${String(journey.createPrompt || "").length} / 500</span></small></label><section><div><span class="nj-eyebrow">We will set up</span><h4>A grounded authoring workspace</h4></div>${njPill("Editable later", "blue")}<footer>${["Suggested title","Audience","Purpose","Source plan"].map((x) => njPill(x)).join("")}</footer></section>${journey.error ? `<p class="nj-error" role="alert"><strong>Notebook could not be created.</strong><span>${escapeHTML(journey.error)}</span></p>` : ""}</main><footer><span>Nothing is published until you approve it.</span><div>${njButton("Cancel", "close-modal")}<button class="nj-btn primary" ${journey.busy === "create" ? "disabled" : ""}>${journey.busy === "create" ? "Creating…" : "Create notebook →"}</button></div></footer></form></div>`;
+  if (journey.modal === "create") {
+    const promptLength = String(journey.createPrompt || "").length;
+    const promptValid = promptLength >= 8 && promptLength <= 500;
+    return `<div class="nj-modalshade"><form class="nj-modal" id="njCreateForm"><header><div><span class="nj-eyebrow">New notebook</span><h2>What are you creating today?</h2><p>Describe the outcome in one sentence. We will suggest the title, audience, and starting structure.</p></div><button type="button" data-nj-action="close-modal">×</button></header><main><label>What should this notebook help someone do?<textarea id="njCreatePrompt" required minlength="8" maxlength="500" aria-describedby="njCreatePromptHelp" placeholder="Example: Help eligibility workers understand when and how households must report changes.">${escapeHTML(journey.createPrompt || "")}</textarea><small id="njCreatePromptHelp" class="nj-field-help"><span>Enter at least 8 characters. Your description is retained if the service needs to retry.</span><span id="njCreatePromptCount" aria-live="polite">${promptLength} of 500 characters</span></small></label><section><div><span class="nj-eyebrow">We will set up</span><h4>A grounded authoring workspace</h4></div>${njPill("Editable later", "blue")}<footer>${["Suggested title","Audience","Purpose","Source plan"].map((x) => njPill(x)).join("")}</footer></section>${journey.error ? `<p class="nj-error" role="alert"><strong>Notebook could not be created.</strong><span>${escapeHTML(journey.error)}</span></p>` : ""}</main><footer><span>Nothing is published until you approve it.</span><div>${njButton("Cancel", "close-modal")}<button class="nj-btn primary" ${journey.busy === "create" || !promptValid ? "disabled" : ""}>${journey.busy === "create" ? "Creating…" : "Create notebook →"}</button></div></footer></form></div>`;
+  }
   if (journey.modal === "finalize" && notebook) {
     const points = notebook.content_brief?.points || [];
     const citationCount = points.reduce((count, point) => count + (point.citations?.length || 0), 0);
@@ -273,7 +277,6 @@ async function njCreateNotebook(prompt) {
   state.artifactStudio.activeProjectNotebookId = notebook.id;
   state.artifactStudio.notebookMode = "workspace";
   njUpdateNotebook(notebook);
-  await njArtifactAction("set_stage", { stage: "empty" });
   state.notebookJourney.screen = "empty";
 }
 async function njSetPersistedStage(stage, screen = stage) { await njArtifactAction("set_stage", { stage }); njSetScreen(screen); }
@@ -466,8 +469,11 @@ function njBindJourneyEvents() {
   createPrompt?.addEventListener("input", () => {
     state.notebookJourney.createPrompt = createPrompt.value;
     state.notebookJourney.error = null;
+    root.querySelector(".nj-error")?.remove();
     const count = root.querySelector("#njCreatePromptCount");
-    if (count) count.textContent = `${createPrompt.value.length} / 500`;
+    if (count) count.textContent = `${createPrompt.value.length} of 500 characters`;
+    const submit = root.querySelector("#njCreateForm .nj-btn.primary");
+    if (submit) submit.disabled = createPrompt.value.trim().length < 8 || createPrompt.value.length > 500;
   });
   root.querySelector("#njCreateForm")?.addEventListener("submit",async(event)=>{event.preventDefault();const prompt=createPrompt.value.trim();state.notebookJourney.createPrompt=prompt;state.notebookJourney.busy="create";state.notebookJourney.error=null;renderProductView();try{await njCreateNotebook(prompt);state.notebookJourney.modal=null;state.notebookJourney.createPrompt="";}catch(error){state.notebookJourney.error=error.message;}state.notebookJourney.busy=null;renderProductView();});
   root.querySelectorAll("[data-nj-source]").forEach((input)=>input.addEventListener("change",()=>njToggleSource(input).catch((e)=>showToast("Source update failed",e.message,"!"))));
