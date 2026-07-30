@@ -48,6 +48,7 @@
 
 - [x] Contract-test scenario distribution, application blanks, caller responses, voice differences, and privacy routes.
 - [x] Browser-test all six route starts, proactive field focus, unavailable scoring, mobile overflow, and console errors.
+- [x] Verify every BO-001 and BO-002 authored question/answer pair maps to its exact frozen fact and case path.
 - [x] Provide developer text-QA mode using the live Hume prompt, brief, tools, and route.
 - [x] Canary BO-001 greeting and one rich factual answer with generated Hume audio.
 - [ ] Run a full factual question matrix for all six callers in live Hume text mode.
@@ -55,7 +56,7 @@
 - [ ] Run live unavailable-contact/message canaries for BO-005 and BO-006.
 - [ ] Complete an end-to-end BO-001 and BO-002 interview through field entry, evidence, authored outcome, notices, authorization, and results.
 - [ ] Perform human-audible Safari and Chrome canaries for direct, handoff, and unavailable routes.
-- [ ] Deploy the transcript-to-fact synchronization change to Vercel and repeat production browser smoke tests.
+- [x] Deploy the transcript-to-fact synchronization change to Vercel and repeat the full six-case browser suite against production.
 
 ## Current implementation focus
 

@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-07-30T19:37:27.017Z",
-  "base_url": "http://127.0.0.1:8112",
+  "generated_at": "2026-07-30T19:42:22.955Z",
+  "base_url": "https://eligibility-workspace-nu.vercel.app",
   "browser": "Chromium headless",
   "route_distribution": {
     "direct": 2,
