@@ -33,9 +33,8 @@ export async function notebookVideoHealth() {
   if (healthCache && Date.now() - healthCache.checkedAt < 300_000) return healthCache.value;
   let value;
   try {
-    const data = await heygen("/v2/avatars", { method: "GET", timeoutMs: 4_000 });
-    const count = (data.avatars || data.avatar_list || []).length;
-    value = count ? { configured: true, healthy: true, error: null } : { configured: true, healthy: false, error: "No usable avatars are available" };
+    await heygen("/v3/users/me", { method: "GET", timeoutMs: 20_000 });
+    value = { configured: true, healthy: true, error: null };
   } catch (error) {
     value = { configured: true, healthy: false, error: error.message };
   }
