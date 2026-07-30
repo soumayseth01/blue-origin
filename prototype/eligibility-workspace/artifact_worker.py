@@ -169,7 +169,13 @@ def _render_docx(project: dict, brief: dict, output_dir: pathlib.Path, images: l
         document.add_heading("At a glance", level=1)
         document.add_paragraph(project["summary"])
     document.add_heading("Key guidance", level=1)
-    points = brief.get("points") or []
+    brief_points = brief.get("points") or []
+    edited_points = project.get("key_points") or []
+    points = [
+        {**point, "statement": edited_points[index] if index < len(edited_points) else point.get("statement", "")}
+        for index, point in enumerate(brief_points)
+    ]
+    points.extend({"statement": value, "intended_use": "key_fact", "citations": []} for value in edited_points[len(points):])
     for index, point in enumerate(points, start=1):
         use = str(point.get("intended_use", "key_fact")).replace("_", " ").title()
         document.add_heading(f"{index}. {use}", level=2)
@@ -277,15 +283,23 @@ def _render_pptx(project: dict, brief: dict, output_dir: pathlib.Path, images: l
     audience_p = audience.text_frame.paragraphs[0]
     audience_p.text = project["audience"]
     audience_p.font.size = PptPt(11); audience_p.font.color.rgb = PPT_WHITE
-    points = brief.get("points") or []
+    brief_points = brief.get("points") or []
+    edited_points = project.get("key_points") or []
+    scenes = project.get("scenes") or []
+    points = [
+        {**point, "statement": edited_points[index] if index < len(edited_points) else point.get("statement", "")}
+        for index, point in enumerate(brief_points)
+    ]
+    points.extend({"statement": value, "intended_use": "key_fact", "citations": []} for value in edited_points[len(points):])
     for index, point in enumerate(points, start=1):
+        scene = scenes[index - 1] if index - 1 < len(scenes) else {}
         slide = deck.slides.add_slide(blank)
-        _add_slide_title(slide, point.get("intended_use", "Key point").replace("_", " ").title(), f"Approved point {index}")
+        _add_slide_title(slide, scene.get("title") or point.get("intended_use", "Key point").replace("_", " ").title(), f"Approved point {index}")
         body = slide.shapes.add_textbox(PptInches(0.9), PptInches(1.85), PptInches(8.25), PptInches(3.9))
         body_tf = body.text_frame
         body_tf.word_wrap = True
         body_p = body_tf.paragraphs[0]
-        body_p.text = _plain_text(point.get("statement", ""))
+        body_p.text = _plain_text(scene.get("narration") or point.get("statement", ""))
         body_p.font.size = PptPt(23); body_p.font.color.rgb = PPT_BLUE
         citations = point.get("citations") or []
         if citations:

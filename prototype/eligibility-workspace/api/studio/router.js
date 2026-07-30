@@ -231,7 +231,7 @@ function releaseProject(req, res) {
   requireApproval(req);
   const { project, render_job: render } = requestBody(req);
   if (!project || !render || render.status !== "completed") throw Object.assign(new Error("Completed render job required"), { statusCode: 409 });
-  send(res, 200, { release_id: `release:${crypto.randomUUID()}`, project_id: project.project_id, title: project.title, format: project.format, template_id: project.template_id, brief_id: project.brief_id, brief_version: project.brief_version, source_ids: project.source_ids || [], outputs: (render.files || []).map(file => file.format), files: render.files || [], published_at: new Date().toISOString(), status: "published", notebook_status: "pending", checksums: Object.fromEntries((render.files || []).map(file => [file.format, file.checksum])) });
+  send(res, 200, { release_id: `release:${crypto.randomUUID()}`, project_id: project.project_id, notebook_id: project.notebook_id || null, title: project.title, format: project.format, version: project.version || 1, derived_from: project.derived_from || null, template_id: project.template_id, brief_id: project.brief_id, brief_version: project.brief_version, source_ids: project.source_ids || [], outputs: (render.files || []).map(file => file.format), files: render.files || [], published_at: new Date().toISOString(), status: "published", notebook_status: "pending", checksums: Object.fromEntries((render.files || []).map(file => [file.format, file.checksum])) });
 }
 
 export default async function handler(req, res) {

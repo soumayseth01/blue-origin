@@ -30,17 +30,17 @@ const curatedArtifactTemplates = [
   { id: "doc-quick-reference", format: "job_aid", name: "One-page quick reference", description: "A concise operator reference with key facts, a short procedure, one callout, and source notes.", icon: "article", outputs: ["DOCX", "PDF"], pages: "1 page", imageSlots: 1 },
   { id: "doc-step-by-step", format: "job_aid", name: "Step-by-step job aid", description: "A task-focused guide with prerequisites, numbered actions, screenshots, warnings, and a completion checklist.", icon: "format_list_numbered", outputs: ["DOCX", "PDF"], pages: "2–4 pages", imageSlots: 3 },
   { id: "doc-reference-guide", format: "job_aid", name: "Detailed reference guide", description: "A sectioned guide with procedures, examples, tables, glossary entries, and revision history.", icon: "menu_book", outputs: ["DOCX", "PDF"], pages: "5–10 pages", imageSlots: 4 },
-  { id: "ppt-process-walkthrough", format: "presentation", name: "Guided process walkthrough", description: "Title, objectives, process overview, step slides, recap, and next steps with an avatar-safe presenter region.", icon: "co_present", outputs: ["PPTX", "MP4"], pages: "6–10 slides", imageSlots: 4 },
-  { id: "ppt-policy-briefing", format: "presentation", name: "Feature or policy briefing", description: "Context, key changes, impact, examples, decisions, and resources for a concise briefing.", icon: "campaign", outputs: ["PPTX", "MP4"], pages: "7–12 slides", imageSlots: 3 },
-  { id: "ppt-scenario-training", format: "presentation", name: "Scenario-based training deck", description: "Scenario facts, decisions, walkthrough, knowledge checks, and recap for facilitated learning.", icon: "school", outputs: ["PPTX", "MP4"], pages: "8–14 slides", imageSlots: 5 },
+  { id: "ppt-process-walkthrough", format: "presentation", name: "Guided process walkthrough", description: "Title, objectives, process overview, step slides, recap, and next steps with an avatar-safe presenter region.", icon: "co_present", outputs: ["PPTX"], pages: "6–10 slides", imageSlots: 4 },
+  { id: "ppt-policy-briefing", format: "presentation", name: "Feature or policy briefing", description: "Context, key changes, impact, examples, decisions, and resources for a concise briefing.", icon: "campaign", outputs: ["PPTX"], pages: "7–12 slides", imageSlots: 3 },
+  { id: "ppt-scenario-training", format: "presentation", name: "Scenario-based training deck", description: "Scenario facts, decisions, walkthrough, knowledge checks, and recap for facilitated learning.", icon: "school", outputs: ["PPTX"], pages: "8–14 slides", imageSlots: 5 },
   { id: "quiz-grounded-check", format: "quiz", name: "Grounded knowledge check", description: "Five cited questions with answer keys, explanations, and deterministic scoring.", icon: "quiz", outputs: ["HTML", "JSON"], pages: "5 questions", imageSlots: 0 },
 ];
 
 const artifactFormatCards = [
-  { id: "video", icon: "movie", title: "Instructional video", text: "Turn a reviewed presentation into a narrated avatar video.", outputs: "PPTX · MP4 · captions" },
-  { id: "quiz", icon: "quiz", title: "Quiz", text: "Create cited questions and explanations from the approved brief.", outputs: "HTML · JSON" },
   { id: "job_aid", icon: "description", title: "Job aid", text: "Build an editable operator guide and matching distribution PDF.", outputs: "DOCX · PDF" },
-  { id: "presentation", icon: "slideshow", title: "Presentation", text: "Create an editable deck with optional per-slide avatar narration.", outputs: "PPTX · optional MP4" },
+  { id: "presentation", icon: "slideshow", title: "Presentation", text: "Create an editable deck with image and presenter-safe areas.", outputs: "PPTX" },
+  { id: "quiz", icon: "quiz", title: "Knowledge check", text: "Create cited questions and explanations from the approved brief.", outputs: "HTML · JSON" },
+  { id: "video", icon: "movie", title: "Video", text: "Create a narrated HeyGen video from the approved presentation.", outputs: "MP4 · captions", dependent: true },
 ];
 
 state.artifactStudio = {
@@ -59,6 +59,7 @@ state.artifactStudio = {
   notebookPages: { published: 1, in_review: 1, draft: 1 },
   notebookCreateStatus: "idle",
   notebookCreateError: null,
+  notebookCreateDialog: null,
   notebookPublish: null,
   notebookAutosaveState: "saved",
   connectedNotebookChat: [],
@@ -99,6 +100,10 @@ state.artifactStudio = {
   format: null,
   templateId: null,
   project: null,
+  projects: {},
+  approvedPresentation: null,
+  activeProjectNotebookId: null,
+  draftGenerationStatus: "idle",
   releases: [],
   integrationStatus: { openai: false, heygen: false, notebook: false, blob: false, worker: false },
 };
@@ -623,7 +628,7 @@ function useSelectedLibrarySourcesInNotebook() {
   const selectedSourceIds = [...state.selectedSourceIds];
   studio.notebookMode = "landing";
   setProductView("notebook");
-  createNotebookWorkspace(selectedSourceIds);
+  openNotebookCreateDialog(selectedSourceIds);
 }
 
 function notebookSourceLinkPayload(source) {
@@ -642,10 +647,50 @@ function notebookSourceLinkPayload(source) {
   };
 }
 
-async function createNotebookWorkspace(initialSourceIds = []) {
+function openNotebookCreateDialog(initialSourceIds = []) {
+  const studio = state.artifactStudio;
+  studio.notebookCreateError = null;
+  studio.notebookCreateDialog = { prompt: "", sourceIds: [...new Set(initialSourceIds)] };
+  renderProductView();
+}
+
+function inferNotebookSetup(prompt) {
+  const cleaned = String(prompt || "").trim().replace(/\s+/g, " ");
+  const programs = [
+    [/\bsnap\b|food assistance|nutrition assistance/i, "SNAP"],
+    [/\bmedicaid\b|medical assistance|chip|michild/i, "Medicaid"],
+    [/\btanf\b|cash assistance|family independence/i, "TANF"],
+  ].filter(([pattern]) => pattern.test(cleaned)).map(([, program]) => program);
+  const audienceMatch = cleaned.match(/(?:for|used by|train)\s+([^,.]+?)(?:\s+(?:on|about|to|using|so that)\b|[,.]|$)/i);
+  const audience = audienceMatch?.[1]?.trim() || "Eligibility operations staff";
+  const topic = cleaned
+    .replace(/^(create|build|draft|make|prepare|help me create)\s+(a|an|the)?\s*/i, "")
+    .replace(/\s+(for|used by|that helps|so that)\s+.*$/i, "")
+    .trim();
+  const shortTopic = (topic || "Operational knowledge").split(/\s+/).slice(0, 7).join(" ");
+  const title = shortTopic.replace(/\b\w/g, (letter) => letter.toUpperCase()).slice(0, 160);
+  return {
+    title,
+    purpose: cleaned,
+    audience,
+    programs: programs.length ? programs : ["Integrated eligibility"],
+    instructions: "Create a grounded job aid, presentation, and knowledge check. Create video only from an approved presentation version.",
+    access_scope: "private",
+  };
+}
+
+function renderNotebookCreateDialog() {
+  const dialog = state.artifactStudio.notebookCreateDialog;
+  if (!dialog) return "";
+  const creating = state.artifactStudio.notebookCreateStatus === "creating";
+  return `<div class="notebook-dialog-backdrop"><section class="notebook-create-dialog notebook-prompt-dialog" role="dialog" aria-modal="true" aria-labelledby="notebookCreateHeading" data-notebook-dialog><header><div><span>New notebook</span><h2 id="notebookCreateHeading">What are you creating today?</h2></div><button type="button" data-action="close-notebook-create" aria-label="Close create notebook dialog">${materialIcon("close")}</button></header><form id="notebookCreateForm"><div class="notebook-prompt-body"><label for="notebookCreatePrompt">Describe the outcome in your own words</label><textarea id="notebookCreatePrompt" autofocus required minlength="8" placeholder="Example: Create SNAP reporting training for eligibility workers using the latest policy sources.">${escapeHTML(dialog.prompt)}</textarea><div class="notebook-prompt-hint">${materialIcon("auto_awesome")} We’ll infer the title, audience, purpose, and source plan. You can edit them in the notebook.</div><section><strong>Your notebook will prepare</strong><div><span>${materialIcon("description")} Job aid</span><span>${materialIcon("slideshow")} Presentation</span><span>${materialIcon("quiz")} Knowledge check</span><span class="dependent">${materialIcon("movie")} Video after presentation approval</span></div></section>${state.artifactStudio.notebookCreateError ? `<div class="notebook-dialog-error" role="alert">${materialIcon("error")}<strong>${escapeHTML(state.artifactStudio.notebookCreateError)}</strong></div>` : ""}</div><footer><span>${dialog.sourceIds.length ? `${dialog.sourceIds.length} selected Library source${dialog.sourceIds.length === 1 ? "" : "s"} will be attached.` : "Start with the outcome; add or change sources next."}</span><div><button type="button" class="button button-secondary" data-action="close-notebook-create">Cancel</button><button class="button button-primary" ${creating ? "disabled" : ""}>${creating ? "Creating…" : "Create notebook"}</button></div></footer></form></section></div>`;
+}
+
+async function createNotebookWorkspace(initialSourceIds = [], prompt = "") {
   const studio = state.artifactStudio;
   if (studio.notebookCreateStatus === "creating") return;
   const selectedSourceIds = [...new Set(initialSourceIds)];
+  const setup = inferNotebookSetup(prompt);
   studio.notebookCreateStatus = "creating";
   studio.notebookCreateError = null;
   renderProductView();
@@ -653,7 +698,7 @@ async function createNotebookWorkspace(initialSourceIds = []) {
     let notebook = await studioJSON("/api/studio/notebooks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: "{}",
+      body: JSON.stringify(setup),
     });
     const sourceErrors = [];
     for (const sourceId of selectedSourceIds) {
@@ -669,18 +714,21 @@ async function createNotebookWorkspace(initialSourceIds = []) {
     }
     studio.notebooks.unshift(notebook);
     studio.activeNotebookId = notebook.id;
+    studio.activeProjectNotebookId = notebook.id;
+    studio.projects = {};
+    studio.approvedPresentation = null;
     studio.notebookMode = "workspace";
     studio.notebookCreateStatus = "idle";
+    studio.notebookCreateDialog = null;
     state.selectedSourceIds = new Set(notebook.source_ids || []);
     syncArtifactBriefFromNotebook(notebook);
     renderProductView();
     queueMicrotask(() => {
       const title = document.querySelector("[data-notebook-title]");
       title?.focus();
-      title?.select();
     });
     if (sourceErrors.length) showToast("Notebook created", `${sourceErrors.length} selected source${sourceErrors.length === 1 ? " was" : "s were"} not attached. Add them again from the source panel.`, "!");
-    else showToast("Notebook created", "Your private draft is ready. Name it and add sources when you are ready.");
+    else showToast("Notebook created", "Your outcome, audience, and three initial draft types are ready to review.");
     if (notebook.source_ids?.length) analyzeNotebookContent("replace");
   } catch (error) {
     studio.notebookCreateStatus = "idle";
@@ -691,6 +739,11 @@ async function createNotebookWorkspace(initialSourceIds = []) {
 }
 
 async function openNotebookWorkspace(id) {
+  if (state.artifactStudio.activeProjectNotebookId !== id) {
+    state.artifactStudio.projects = {};
+    state.artifactStudio.approvedPresentation = null;
+    state.artifactStudio.activeProjectNotebookId = id;
+  }
   state.artifactStudio.activeNotebookId = id;
   state.artifactStudio.notebookMode = "workspace";
   state.artifactStudio.notebookQuestionError = null;
@@ -900,6 +953,7 @@ function renderNotebookLanding() {
     ${studio.notebookCreateError ? `<section class="notebook-load-error notebook-create-error" role="alert">${materialIcon("error")}<div><strong>Notebook creation failed</strong><p>${escapeHTML(studio.notebookCreateError)}</p></div><button class="button button-secondary" data-action="create-notebook-workspace">Retry</button></section>` : ""}
     <section class="notebook-command-bar"><label class="notebook-global-search">${materialIcon("search")}<input id="notebookGlobalSearch" value="${escapeHTML(studio.notebookQuery)}" placeholder="Search notebooks, programs, owners, or purpose" aria-label="Search notebooks" /></label><button class="notebook-mobile-filter" data-notebook-mobile-filter aria-expanded="${studio.notebookFiltersOpen}">${materialIcon("filter_list")} Filters</button><div class="notebook-filters ${studio.notebookFiltersOpen ? "open" : ""}"><select data-notebook-filter="program" aria-label="Filter by program"><option value="all">All programs</option>${["Medicaid", "SNAP", "TANF", "Integrated eligibility"].map((value) => `<option value="${value}" ${studio.notebookProgramFilter === value ? "selected" : ""}>${value}</option>`).join("")}</select><select data-notebook-filter="access" aria-label="Filter by access"><option value="all">All access</option><option value="organization" ${studio.notebookAccessFilter === "organization" ? "selected" : ""}>Organization</option><option value="team" ${studio.notebookAccessFilter === "team" ? "selected" : ""}>Team</option><option value="private" ${studio.notebookAccessFilter === "private" ? "selected" : ""}>Private</option></select><select data-notebook-sort aria-label="Sort notebooks"><option value="recent" ${studio.notebookSort === "recent" ? "selected" : ""}>Recently active</option><option value="published" ${studio.notebookSort === "published" ? "selected" : ""}>Recently published</option><option value="title" ${studio.notebookSort === "title" ? "selected" : ""}>Title A–Z</option></select><div class="notebook-view-toggle" role="group" aria-label="Notebook view"><button data-notebook-view="grid" class="${studio.notebookView === "grid" ? "active" : ""}" aria-pressed="${studio.notebookView === "grid"}">${materialIcon("grid_view")}</button><button data-notebook-view="list" class="${studio.notebookView === "list" ? "active" : ""}" aria-pressed="${studio.notebookView === "list"}">${materialIcon("view_list")}</button></div></div></section>
     ${studio.notebooksStatus === "loading" || studio.notebooksStatus === "idle" ? `<section class="notebook-loading"><header><h2>Published notebooks</h2><span>Loading workspace…</span></header>${renderNotebookSkeletons()}</section>` : studio.notebooksStatus === "error" ? `<section class="notebook-load-error" role="alert">${materialIcon("cloud_off")}<div><strong>Notebook workspace unavailable</strong><p>${escapeHTML(studio.notebooksError || "The notebook service could not be reached.")}</p></div><button class="button button-secondary" data-action="retry-notebook-load">Retry</button></section>` : `${renderNotebookCollection("Published notebooks", "Current, reusable knowledge released by notebook authors.", "published", published)}${renderNotebookCollection("In review", "Work undergoing an author-led readiness and source check.", "in_review", review)}${renderNotebookCollection("Drafts", "Private working copies and changes to previously published notebooks.", "draft", drafts)}`}
+    ${renderNotebookCreateDialog()}
   </div>`;
 }
 
@@ -936,7 +990,8 @@ function renderNotebookStudioWorkspace() {
   const analyzing = summary.status === "analyzing" || state.artifactStudio.notebookAnalysisStatus === "loading";
   const canChat = selectedSources.length && summary.status === "current" && !asking;
   const statusLabel = notebook.status === "published" ? `Published · v${notebook.published_version}` : notebook.status === "in_review" ? "In review" : notebook.published_version ? `Draft changes · published v${notebook.published_version}` : "Draft";
-  const selectedFormat = artifactFormatCards.find((format) => format.id === notebook.selected_output);
+  const projects = state.artifactStudio.projects;
+  const presentationVersion = state.artifactStudio.approvedPresentation?.version || null;
   return `<div class="notebook-desk-page grounded">
     <header class="notebook-desk-header"><div class="notebook-desk-title"><button data-action="back-to-notebook-landing" aria-label="Back to notebooks">${materialIcon("arrow_back")}</button><span class="notebook-desk-emblem">${materialIcon("auto_stories")}</span><div><input data-notebook-title value="${escapeHTML(notebook.title)}" aria-label="Notebook title"/><span><i class="${notebook.status}"></i>${escapeHTML(statusLabel)} · <b data-notebook-save-state>${state.artifactStudio.notebookAutosaveState === "saving" ? "Saving…" : state.artifactStudio.notebookAutosaveState === "error" ? "Save failed" : "Saved to workspace"}</b></span></div></div><div class="notebook-desk-actions"><button class="button button-secondary" data-action="open-library">${materialIcon("local_library")} Library</button><button class="button button-secondary" data-action="open-releases">${materialIcon("inventory_2")} Releases</button>${notebook.status === "draft" ? `<button class="button button-secondary" data-action="move-notebook-to-review">${materialIcon("rate_review")} Move to review</button>` : ""}<button class="button button-primary" data-action="publish-notebook-workspace">${materialIcon("publish")} ${notebook.published_version ? "Publish new version" : "Publish notebook"}</button></div></header>
     <section class="notebook-desk-grid">
@@ -946,7 +1001,7 @@ function renderNotebookStudioWorkspace() {
         <section class="notebook-key-points"><header><div><small>Content brief</small><h3>Key points</h3><span>${points.length} point${points.length === 1 ? "" : "s"} · ${brief.status === "approved" ? `finalized v${brief.version}` : brief.status === "stale" ? "needs review" : "draft"}</span></div><div><button type="button" data-action="add-notebook-key-point">${materialIcon("add")} Add</button><button type="button" data-action="expand-notebook-key-points" ${!selectedSources.length || analyzing ? "disabled" : ""}>${materialIcon("auto_awesome")} Find more</button></div></header><div class="notebook-key-point-list">${points.map((point, index) => renderNotebookPoint(point, index, points.length)).join("") || `<div class="notebook-key-point-empty">Candidate key points will appear after source analysis.</div>`}</div><footer><button class="button button-primary" type="button" data-action="finalize-notebook-content" ${!points.length || state.artifactStudio.notebookContentStatus === "saving" ? "disabled" : ""}>${brief.status === "approved" ? `Finalize new version` : "Finalize key points"}</button></footer></section>
         <section class="notebook-grounded-chat"><header><div><small>Source chat</small><h3>Ask your documents</h3></div><span>${notebook.chat_messages?.length || 0} messages</span></header><div class="notebook-conversation-body">${renderNotebookChat(notebook)}</div><form class="notebook-chat-composer" id="notebookChatForm"><div><textarea id="notebookChatInput" placeholder="Ask a question or request more key points…" ${canChat ? "" : "disabled"}>${escapeHTML(state.artifactStudio.notebookChatDraft)}</textarea><button aria-label="Ask selected sources" ${canChat ? "" : "disabled"}>${materialIcon(asking ? "progress_activity" : "arrow_upward")}</button></div><footer><span>${selectedSources.length} selected source${selectedSources.length === 1 ? "" : "s"}</span>${state.artifactStudio.notebookQuestionError ? `<strong>${escapeHTML(state.artifactStudio.notebookQuestionError)}</strong>` : `<small>${canChat ? "Answers use only attached source content and include citations." : "Complete source analysis to enable chat."}</small>`}</footer></form></section>
       </div></main>
-      <aside class="notebook-desk-panel notebook-output-panel"><header><div><span>Creation studio</span><h3>Choose an output</h3></div><span class="brief-readiness ${brief.status}">${brief.status === "approved" ? `Brief v${brief.version}` : "Finalize content"}</span></header><p class="notebook-output-guidance">Choose one output now. Generation begins only after the key points are finalized.</p><div class="notebook-output-grid">${artifactFormatCards.map((format) => `<button type="button" data-notebook-output="${format.id}" class="${notebook.selected_output === format.id ? "selected" : ""}" aria-pressed="${notebook.selected_output === format.id}"><span>${materialIcon(format.icon)}</span><div><strong>${escapeHTML(format.title)}</strong><small>${escapeHTML(format.outputs)}</small></div>${materialIcon(notebook.selected_output === format.id ? "check_circle" : "chevron_right")}</button>`).join("")}</div><section class="notebook-brief-card"><span>${materialIcon(brief.status === "approved" ? "verified" : "fact_check")}</span><div><strong>${brief.status === "approved" ? `Content finalized · v${brief.version}` : "Sources and content are being finalized"}</strong><p>${brief.status === "approved" ? `${points.length} controlled key points are ready for the selected output.` : "You can select an output while continuing to refine sources, key points, and chat."}</p></div>${brief.status === "approved" && selectedFormat ? `<button data-action="continue-notebook-output">Continue to ${escapeHTML(selectedFormat.title)}</button>` : ""}</section><section class="notebook-output-shelf"><header><div><span>Saved output</span><strong>${state.artifactStudio.releases.length}</strong></div><button data-action="open-releases">View all</button></header>${state.artifactStudio.releases.slice(0, 3).map((release) => `<article><span>${materialIcon(release.format === "job_aid" ? "description" : release.format === "quiz" ? "quiz" : "slideshow")}</span><div><strong>${escapeHTML(release.title)}</strong><small>${escapeHTML(release.format.replaceAll("_", " "))}</small></div></article>`).join("") || `<div class="notebook-output-empty">Generated and published files will appear here.</div>`}</section></aside>
+      <aside class="notebook-desk-panel notebook-output-panel"><header><div><span>Creation studio</span><h3>Your editable drafts</h3></div><span class="brief-readiness ${brief.status}">${brief.status === "approved" ? `Brief v${brief.version}` : "Finalize content"}</span></header><p class="notebook-output-guidance">Finalize the shared content once, then review each draft. Video begins with an approved presentation.</p><div class="notebook-output-grid">${artifactFormatCards.map((format) => { const locked = format.dependent && !presentationVersion; const project = projects[format.id]; const status = locked ? "After presentation approval" : project ? project.status === "approved" ? `Approved v${project.version}` : "Editable draft" : format.dependent ? `From Presentation v${presentationVersion}` : "Ready to create"; return `<button type="button" data-open-notebook-draft="${format.id}" class="${project ? "has-draft" : ""} ${locked ? "locked" : ""}" ${locked ? "disabled" : ""}><span>${materialIcon(locked ? "lock" : format.icon)}</span><div><strong>${escapeHTML(format.title)}</strong><small>${escapeHTML(status)}</small></div>${materialIcon(project ? "edit" : locked ? "link" : "chevron_right")}</button>`; }).join("")}</div><section class="notebook-brief-card"><span>${materialIcon(brief.status === "approved" ? "verified" : "fact_check")}</span><div><strong>${brief.status === "approved" ? `Content finalized · v${brief.version}` : "Finalize the shared content first"}</strong><p>${brief.status === "approved" ? `${points.length} controlled key points can populate all three initial drafts.` : "Sources, summary, and key points stay shared across every deliverable."}</p></div>${brief.status === "approved" && !projects.job_aid ? `<button data-action="create-all-notebook-drafts">Create all 3 drafts</button>` : brief.status === "approved" ? `<button data-open-notebook-draft="presentation">Review presentation</button>` : ""}</section><section class="notebook-output-shelf"><header><div><span>Published outputs</span><strong>${state.artifactStudio.releases.length}</strong></div><button data-action="open-releases">View all</button></header>${state.artifactStudio.releases.slice(0, 3).map((release) => `<article><span>${materialIcon(release.format === "job_aid" ? "description" : release.format === "quiz" ? "quiz" : release.format === "video" ? "movie" : "slideshow")}</span><div><strong>${escapeHTML(release.title)}</strong><small>${escapeHTML(release.format.replaceAll("_", " "))}${release.derived_from?.version ? ` · from Presentation v${release.derived_from.version}` : ""}</small></div></article>`).join("") || `<div class="notebook-output-empty">Approved files will appear here with their source and version history.</div>`}</section></aside>
     </section>${renderNotebookCitationDrawer()}${renderNotebookPublishDialog(notebook)}
   </div>`;
 }
@@ -1113,7 +1168,8 @@ function renderBriefEditor() {
 }
 
 function renderFormatSelection() {
-  return `<section class="artifact-flow format-selection"><header class="artifact-flow-header"><button class="flow-back" data-action="back-to-brief">${materialIcon("arrow_back")} Content brief</button><div><span class="page-kicker">Choose format</span><h3>What do you want to create?</h3><p>The approved content brief is now the controlled input for every option below.</p></div><div class="flow-status approved"><span>v${state.artifactStudio.brief.version}</span><small>brief approved</small></div></header><section class="format-card-grid">${artifactFormatCards.map((format) => `<button class="format-card" data-select-artifact-format="${format.id}"><span class="card-icon">${materialIcon(format.icon)}</span><small>${escapeHTML(format.outputs)}</small><strong>${escapeHTML(format.title)}</strong><p>${escapeHTML(format.text)}</p><span class="format-card-link">Choose format ${materialIcon("arrow_forward")}</span></button>`).join("")}</section></section>`;
+  const presentationVersion = state.artifactStudio.approvedPresentation?.version;
+  return `<section class="artifact-flow format-selection"><header class="artifact-flow-header"><button class="flow-back" data-action="back-to-brief">${materialIcon("arrow_back")} Content brief</button><div><span class="page-kicker">Creation studio</span><h3>Create once, adapt into each deliverable.</h3><p>Job aid, presentation, and knowledge check share the approved brief. Video starts from an approved presentation.</p></div><div class="flow-status approved"><span>v${state.artifactStudio.brief.version}</span><small>brief approved</small></div></header><section class="format-card-grid">${artifactFormatCards.map((format) => { const locked = format.dependent && !presentationVersion; return `<button class="format-card ${locked ? "locked" : ""}" data-select-artifact-format="${format.id}" ${locked ? "disabled" : ""}><span class="card-icon">${materialIcon(locked ? "lock" : format.icon)}</span><small>${locked ? "Approve presentation first" : escapeHTML(format.outputs)}</small><strong>${escapeHTML(format.title)}</strong><p>${escapeHTML(format.text)}</p><span class="format-card-link">${locked ? "Dependent output" : `Open editor ${materialIcon("arrow_forward")}`}</span></button>`; }).join("")}</section></section>`;
 }
 
 function templatesForFormat(format) {
@@ -1127,17 +1183,19 @@ function renderTemplateSelection() {
   return `<section class="artifact-flow template-selection"><header class="artifact-flow-header"><button class="flow-back" data-action="back-to-formats">${materialIcon("arrow_back")} Formats</button><div><span class="page-kicker">Curated templates</span><h3>Choose the structure your audience needs.</h3><p>Templates define editable text, image, citation, narration, and avatar-safe slots.</p></div><div class="flow-status"><span>${templates.length}</span><small>approved templates</small></div></header><section class="template-gallery">${templates.map((template) => `<button class="artifact-template-card" data-template-id="${template.id}"><div class="template-preview ${template.format}"><span>${materialIcon(template.icon)}</span><i></i><i></i><i></i>${template.format === "presentation" ? '<b class="avatar-safe-preview">Presenter</b>' : ""}</div><div><small>${template.outputs.join(" · ")} · ${template.pages}</small><strong>${escapeHTML(template.name)}</strong><p>${escapeHTML(template.description)}</p><span>${template.imageSlots} image slot${template.imageSlots === 1 ? "" : "s"} ${materialIcon("arrow_forward")}</span></div></button>`).join("")}</section></section>`;
 }
 
-function buildArtifactProject(templateId) {
+function buildArtifactProject(templateId, formatOverride = null) {
   const template = curatedArtifactTemplates.find((item) => item.id === templateId);
   const brief = state.artifactStudio.brief;
   const points = brief.points.map((point) => point.statement);
-  const format = state.artifactStudio.format;
+  const format = formatOverride || state.artifactStudio.format;
+  const notebook = activeNotebookRecord();
   const slideCount = template?.format === "presentation" ? Math.max(5, Math.min(8, points.length + 3)) : 0;
   return {
     project_id: `project:bo-${Date.now()}`,
-    title: "",
-    audience: "",
-    objective: "",
+    notebook_id: notebook?.id || null,
+    title: notebook?.title || "",
+    audience: notebook?.audience || "",
+    objective: notebook?.purpose || notebook?.objective || "",
     summary: points.slice(0, 2).join(" "),
     format,
     template_id: templateId,
@@ -1145,10 +1203,88 @@ function buildArtifactProject(templateId) {
     brief_version: brief.version,
     source_ids: [...state.selectedSourceIds],
     status: "draft",
+    version: 1,
+    derived_from: null,
     key_points: points,
     image_slots: Array.from({ length: template?.imageSlots || 0 }, (_, index) => ({ id: `image-${index + 1}`, label: `Image ${index + 1}`, asset: null, caption: "", alt_text: "", fit: "cover" })),
     scenes: Array.from({ length: slideCount }, (_, index) => ({ id: `scene-${index + 1}`, title: points[index] || "", narration: points[index] || "", avatar_enabled: false, avatar_position: "right" })),
   };
+}
+
+function createInitialNotebookDrafts() {
+  const studio = state.artifactStudio;
+  const notebook = activeNotebookRecord();
+  if (!notebook || notebook.content_brief?.status !== "approved") return;
+  syncArtifactBriefFromNotebook(notebook);
+  const defaults = {
+    job_aid: "doc-step-by-step",
+    presentation: "ppt-process-walkthrough",
+    quiz: "quiz-grounded-check",
+  };
+  if (studio.approvedPresentation?.project?.brief_version !== studio.brief.version) {
+    studio.approvedPresentation = null;
+    delete studio.projects.video;
+  }
+  studio.draftGenerationStatus = "generating";
+  Object.entries(defaults).forEach(([format, templateId]) => {
+    if (!studio.projects[format] || studio.projects[format].brief_version !== studio.brief.version) {
+      studio.projects[format] = buildArtifactProject(templateId, format);
+    }
+  });
+  studio.draftGenerationStatus = "ready";
+  renderProductView();
+  showToast("Three editable drafts created", "Review the job aid, presentation, and knowledge check in any order.");
+}
+
+function openNotebookDraft(format) {
+  const studio = state.artifactStudio;
+  if (format === "video" && !studio.approvedPresentation) {
+    return showToast("Approve the presentation first", "Video inherits the approved slide order, visuals, narration, and presenter-safe areas.", "!");
+  }
+  if (!studio.projects[format]) {
+    if (format === "video") studio.projects.video = buildVideoProjectFromPresentation();
+    else createInitialNotebookDrafts();
+  }
+  const project = studio.projects[format];
+  if (!project) return;
+  studio.format = format;
+  studio.templateId = project.template_id;
+  studio.project = project;
+  studio.step = "compose";
+  studio.notebookMode = "artifact";
+  studio.notebookTab = "create";
+  renderProductView();
+}
+
+function buildVideoProjectFromPresentation() {
+  const approved = state.artifactStudio.approvedPresentation;
+  if (!approved) return null;
+  return {
+    ...structuredClone(approved.project),
+    project_id: `project:bo-${Date.now()}`,
+    format: "video",
+    status: "draft",
+    derived_from: {
+      project_id: approved.project.project_id,
+      format: "presentation",
+      version: approved.version,
+      approved_at: approved.approved_at,
+    },
+  };
+}
+
+function approvePresentationAndCreateVideo() {
+  const studio = state.artifactStudio;
+  const project = studio.project;
+  if (!project || project.format !== "presentation") return;
+  const version = Number(studio.approvedPresentation?.version || 0) + 1;
+  project.status = "approved";
+  project.version = version;
+  studio.projects.presentation = project;
+  studio.approvedPresentation = { version, approved_at: new Date().toISOString(), project: structuredClone(project) };
+  studio.projects.video = buildVideoProjectFromPresentation();
+  showToast("Presentation approved", `Video draft created from Presentation v${version}.`);
+  openNotebookDraft("video");
 }
 
 async function populateProjectWithAI() {
@@ -1184,21 +1320,24 @@ function renderComposeArtifact() {
   const project = state.artifactStudio.project;
   const template = curatedArtifactTemplates.find((item) => item.id === project.template_id);
   const presentationLike = ["presentation", "video"].includes(project.format);
+  const outputLabel = project.format === "video" ? "MP4 · captions" : template.outputs.join(" · ");
+  const videoLineage = project.format === "video" && project.derived_from ? `<div class="artifact-lineage-banner">${materialIcon("account_tree")} <div><strong>Video from Presentation v${project.derived_from.version}</strong><span>Slide order, visuals, and narration were copied from the approved deck. Video changes do not alter that presentation version.</span></div></div>` : "";
   return `<section class="artifact-flow compose-view"><header class="artifact-flow-header"><button class="flow-back" data-action="back-to-templates">${materialIcon("arrow_back")} Templates</button><div><span class="page-kicker">Compose · ${escapeHTML(template.name)}</span><h3>Map approved points into editable template slots.</h3><p>Source-backed values keep their citations. Author additions remain separately labeled.</p></div><div class="flow-status"><span>${project.key_points.length}</span><small>approved points mapped</small></div></header>
-    <section class="compose-grid"><main class="slot-editor"><section class="slot-section"><div class="panel-title"><div><span>Project details</span><h3>Required fields</h3></div><button class="row-action" data-action="populate-project-with-ai">Populate with AI</button></div><label>Artifact title<input data-project-field="title" value="${escapeHTML(project.title)}"/></label><label>Audience<input data-project-field="audience" value="${escapeHTML(project.audience)}"/></label><label>Learning objective<textarea data-project-field="objective">${escapeHTML(project.objective)}</textarea></label><label>Summary<textarea data-project-field="summary">${escapeHTML(project.summary)}</textarea></label></section>
+    ${videoLineage}<section class="compose-grid"><main class="slot-editor"><section class="slot-section"><div class="panel-title"><div><span>Project details</span><h3>Required fields</h3></div><button class="row-action" data-action="populate-project-with-ai">Populate with AI</button></div><label>Artifact title<input data-project-field="title" value="${escapeHTML(project.title)}"/></label><label>Audience<input data-project-field="audience" value="${escapeHTML(project.audience)}"/></label><label>Learning objective<textarea data-project-field="objective">${escapeHTML(project.objective)}</textarea></label><label>Summary<textarea data-project-field="summary">${escapeHTML(project.summary)}</textarea></label></section>
       <section class="slot-section"><div class="panel-title"><div><span>Approved brief</span><h3>Mapped key points</h3></div><strong>v${project.brief_version}</strong></div>${project.key_points.map((point, index) => `<label class="mapped-point"><span>${index + 1}</span><textarea data-project-point="${index}">${escapeHTML(point)}</textarea><small>Mapped from approved brief · citations retained</small></label>`).join("")}</section>
       ${project.image_slots.length ? `<section class="slot-section"><div class="panel-title"><div><span>Media</span><h3>Template image slots</h3></div><strong>${project.image_slots.length}</strong></div>${project.image_slots.map(renderImageSlot).join("")}</section>` : ""}
-      ${presentationLike ? `<section class="slot-section"><div class="panel-title"><div><span>Presentation video</span><h3>Per-slide HeyGen presenter</h3></div><strong>${project.scenes.filter((scene) => scene.avatar_enabled).length} enabled</strong></div><div class="scene-editor-list">${project.scenes.map((scene, index) => `<article><span>${index + 1}</span><div><input data-scene-title="${scene.id}" value="${escapeHTML(scene.title)}"/><textarea data-scene-narration="${scene.id}">${escapeHTML(scene.narration)}</textarea><small>Reviewed narration · ${scene.narration.trim() ? scene.narration.trim().split(/\s+/).length : 0} words</small></div><div><label class="avatar-toggle"><input type="checkbox" data-scene-avatar="${scene.id}" ${scene.avatar_enabled ? "checked" : ""}/><span>Avatar</span></label><select data-scene-position="${scene.id}" ${scene.avatar_enabled ? "" : "disabled"}><option value="right" ${scene.avatar_position === "right" ? "selected" : ""}>Right safe area</option><option value="left" ${scene.avatar_position === "left" ? "selected" : ""}>Left safe area</option></select></div></article>`).join("")}</div></section>` : ""}</main>
-      <aside class="compose-preview"><span class="page-kicker">Live structure preview</span><div class="mini-artifact-preview ${presentationLike ? "slides" : project.format}"><header><span>BlueOrigin</span><small>${escapeHTML(template.outputs.join(" · "))}</small></header><h4>${escapeHTML(project.title)}</h4><p>${escapeHTML(project.summary)}</p><ol>${project.key_points.slice(0, 4).map((point) => `<li>${escapeHTML(point)}</li>`).join("")}</ol>${presentationLike ? '<span class="avatar-safe-zone">Avatar-safe</span>' : ""}<footer>Grounded in approved content brief v${project.brief_version}</footer></div><div class="preview-lineage"><strong>Generation boundary</strong><p>This template is populated from the approved brief. It does not resummarize the complete selected policies.</p></div><button class="button button-primary" data-action="generate-artifact-preview">Generate watermarked preview</button></aside></section>
+      ${presentationLike ? `<section class="slot-section"><div class="panel-title"><div><span>${project.format === "video" ? "HeyGen video" : "Presentation scenes"}</span><h3>${project.format === "video" ? "Presenter and narration" : "Slides, narration, and presenter-safe areas"}</h3></div><strong>${project.scenes.filter((scene) => scene.avatar_enabled).length} enabled</strong></div><div class="scene-editor-list">${project.scenes.map((scene, index) => `<article><span>${index + 1}</span><div><input data-scene-title="${scene.id}" value="${escapeHTML(scene.title)}"/><textarea data-scene-narration="${scene.id}">${escapeHTML(scene.narration)}</textarea><small>Reviewed narration · ${scene.narration.trim() ? scene.narration.trim().split(/\s+/).length : 0} words</small></div><div><label class="avatar-toggle"><input type="checkbox" data-scene-avatar="${scene.id}" ${scene.avatar_enabled ? "checked" : ""}/><span>Avatar</span></label><select data-scene-position="${scene.id}" ${scene.avatar_enabled ? "" : "disabled"}><option value="right" ${scene.avatar_position === "right" ? "selected" : ""}>Right safe area</option><option value="left" ${scene.avatar_position === "left" ? "selected" : ""}>Left safe area</option></select></div></article>`).join("")}</div></section>` : ""}</main>
+      <aside class="compose-preview"><span class="page-kicker">Live structure preview</span><div class="mini-artifact-preview ${presentationLike ? "slides" : project.format}"><header><span>BlueOrigin</span><small>${escapeHTML(outputLabel)}</small></header><h4>${escapeHTML(project.title)}</h4><p>${escapeHTML(project.summary)}</p><ol>${project.key_points.slice(0, 4).map((point) => `<li>${escapeHTML(point)}</li>`).join("")}</ol>${presentationLike ? '<span class="avatar-safe-zone">Avatar-safe</span>' : ""}<footer>Grounded in approved content brief v${project.brief_version}</footer></div><div class="preview-lineage"><strong>Generation boundary</strong><p>This template is populated from the approved brief. It does not resummarize the complete selected policies.</p></div><button class="button button-primary" data-action="generate-artifact-preview">Generate watermarked preview</button></aside></section>
   </section>`;
 }
 
 function renderArtifactPreview() {
   const project = state.artifactStudio.project;
   const presentationLike = ["presentation", "video"].includes(project.format);
+  const projectReady = Boolean(project.title && project.audience && project.objective) && project.image_slots.every((slot) => !slot.asset || slot.alt_text);
   return `<section class="artifact-flow artifact-preview-view"><header class="artifact-flow-header"><button class="flow-back" data-action="back-to-compose">${materialIcon("arrow_back")} Edit artifact</button><div><span class="page-kicker">Preview</span><h3>Review the rendered structure before publication.</h3><p>This review artifact is watermarked and remains editable through the project.</p></div><div class="flow-status"><span>${materialIcon("visibility")}</span><small>preview ready</small></div></header>
     <section class="render-preview-grid"><main class="render-canvas ${presentationLike ? "presentation" : project.format}"><span class="preview-watermark">REVIEW</span>${presentationLike ? `<div class="slide-filmstrip">${project.scenes.map((scene, index) => `<button class="${index === 0 ? "active" : ""}" data-preview-scene="${scene.id}"><span>${index + 1}</span>${escapeHTML(scene.title)}</button>`).join("")}</div><div class="large-slide"><span class="brand-corner">BlueOrigin</span><h3>${escapeHTML(project.title)}</h3><p>${escapeHTML(project.objective)}</p><div class="slide-content"><strong>${escapeHTML(project.scenes[0]?.title || "Introduction")}</strong><span>${escapeHTML(project.scenes[0]?.narration || "")}</span></div>${project.scenes[0]?.avatar_enabled ? `<div class="avatar-preview ${project.scenes[0].avatar_position}">${materialIcon("person")}<small>HeyGen presenter</small></div>` : ""}</div>` : `<div class="document-pages"><article><span class="brand-corner">BlueOrigin</span><h3>${escapeHTML(project.title)}</h3><p>${escapeHTML(project.summary)}</p><ol>${project.key_points.map((point) => `<li>${escapeHTML(point)}</li>`).join("")}</ol><footer>Sources and citations · approved brief v${project.brief_version}</footer></article></div>`}</main>
-      <aside class="preview-review-panel"><span class="page-kicker">Publication checklist</span>${[["Source lineage", true], ["Approved brief", true], ["Required fields", Boolean(project.title && project.audience && project.objective)], ["Image alt text", project.image_slots.every((slot) => !slot.asset || slot.alt_text)], ["Avatar safe areas", true]].map(([label, done]) => `<div class="preview-check ${done ? "done" : ""}">${materialIcon(done ? "check_circle" : "radio_button_unchecked")}<span>${label}</span></div>`).join("")}<div class="render-output-list">${releaseOutputsForProject(project).map((output) => `<span>${output}</span>`).join("")}</div><button class="button button-primary" data-action="publish-artifact" ${project.image_slots.every((slot) => !slot.asset || slot.alt_text) ? "" : "disabled"}>Approve & publish release</button><button class="button button-secondary" data-action="back-to-compose">Return to editor</button></aside>
+      <aside class="preview-review-panel"><span class="page-kicker">${project.format === "presentation" ? "Presentation approval" : "Publication checklist"}</span>${[["Source lineage", true], ["Approved brief", true], ["Required fields", Boolean(project.title && project.audience && project.objective)], ["Image alt text", project.image_slots.every((slot) => !slot.asset || slot.alt_text)], ["Avatar safe areas", true]].map(([label, done]) => `<div class="preview-check ${done ? "done" : ""}">${materialIcon(done ? "check_circle" : "radio_button_unchecked")}<span>${label}</span></div>`).join("")}<div class="render-output-list">${releaseOutputsForProject(project).map((output) => `<span>${output}</span>`).join("")}</div>${project.format === "presentation" ? `<button class="button button-primary" data-action="approve-presentation-for-video" ${projectReady ? "" : "disabled"}>Approve & create video</button><small class="approval-helper">This freezes Presentation v${Number(state.artifactStudio.approvedPresentation?.version || 0) + 1} for the video draft.</small><button class="button button-secondary" data-action="publish-artifact" ${projectReady ? "" : "disabled"}>Publish presentation only</button>` : `<button class="button button-primary" data-action="publish-artifact" ${projectReady ? "" : "disabled"}>Approve & publish release</button>`}<button class="button button-secondary" data-action="back-to-compose">Return to editor</button></aside>
     </section>
   </section>`;
 }
@@ -1206,7 +1345,7 @@ function renderArtifactPreview() {
 function releaseOutputsForProject(project) {
   if (project.format === "job_aid") return ["DOCX", "PDF"];
   if (project.format === "presentation") return ["PPTX"];
-  if (project.format === "video") return ["PPTX", "MP4", "SRT", "WebVTT"];
+  if (project.format === "video") return ["MP4", "SRT", "WebVTT"];
   return ["HTML", "JSON"];
 }
 
@@ -1332,6 +1471,17 @@ async function moveNotebookToReview() {
 
 function bindNotebookStudioEvents() {
   const content = dom.screenContent;
+  content.querySelector("#notebookCreateForm")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const dialog = state.artifactStudio.notebookCreateDialog;
+    const prompt = content.querySelector("#notebookCreatePrompt")?.value.trim() || "";
+    if (!dialog || prompt.length < 8) return;
+    dialog.prompt = prompt;
+    createNotebookWorkspace(dialog.sourceIds, prompt);
+  });
+  content.querySelector("#notebookCreatePrompt")?.addEventListener("input", (event) => {
+    if (state.artifactStudio.notebookCreateDialog) state.artifactStudio.notebookCreateDialog.prompt = event.target.value;
+  });
   content.querySelectorAll("[data-open-notebook-id]").forEach((button) => button.addEventListener("click", () => openNotebookWorkspace(button.dataset.openNotebookId)));
   content.querySelector("[data-notebook-title]")?.addEventListener("input", (event) => {
     const notebook = activeNotebookRecord();
@@ -1363,7 +1513,7 @@ function bindNotebookStudioEvents() {
   content.querySelectorAll("[data-notebook-page]").forEach((button) => button.addEventListener("click", () => { state.artifactStudio.notebookPages[button.dataset.notebookPage] = Number(button.dataset.pageValue); renderProductView(); }));
   content.querySelectorAll("[data-notebook-favorite]").forEach((button) => button.addEventListener("click", () => favoriteNotebook(button.dataset.notebookFavorite)));
   content.querySelector("[data-notebook-review-date]")?.addEventListener("change", (event) => { state.artifactStudio.notebookPublish.review_due_at = event.target.value; });
-  content.querySelector("[data-notebook-dialog]")?.addEventListener("keydown", (event) => { if (event.key === "Escape") { event.preventDefault(); state.artifactStudio.notebookPublish = null; renderProductView(); } });
+  content.querySelector("[data-notebook-dialog]")?.addEventListener("keydown", (event) => { if (event.key === "Escape") { event.preventDefault(); state.artifactStudio.notebookPublish = null; state.artifactStudio.notebookCreateDialog = null; renderProductView(); } });
   const notebookDialog = content.querySelector("[data-notebook-dialog]");
   if (notebookDialog) {
     const focusNotebookDialog = () => {
@@ -1402,6 +1552,7 @@ function bindNotebookStudioEvents() {
     persistNotebookPoints(points);
   }));
   content.querySelectorAll("[data-notebook-output]").forEach((button) => button.addEventListener("click", () => saveNotebookContent("select_output", { output: button.dataset.notebookOutput })));
+  content.querySelectorAll("[data-open-notebook-draft]").forEach((button) => button.addEventListener("click", () => openNotebookDraft(button.dataset.openNotebookDraft)));
   content.querySelectorAll("[data-notebook-tab]").forEach((button) => button.addEventListener("click", () => {
     if (button.dataset.notebookTab === "overview") { state.artifactStudio.notebookMode = "landing"; return setProductView("notebook"); }
     state.artifactStudio.notebookTab = button.dataset.notebookTab;
@@ -1498,8 +1649,12 @@ function bindNotebookStudioEvents() {
     if (button.dataset.requiresBrief || state.artifactStudio.brief.status !== "approved") return handleProductAction("start-artifact-flow");
     state.artifactStudio.format = button.dataset.artifactFormat; state.artifactStudio.step = "template"; renderProductView();
   }));
-  content.querySelectorAll("[data-select-artifact-format]").forEach((button) => button.addEventListener("click", () => { state.artifactStudio.format = button.dataset.selectArtifactFormat; state.artifactStudio.step = "template"; renderProductView(); }));
-  content.querySelectorAll("[data-template-id]").forEach((button) => button.addEventListener("click", () => { state.artifactStudio.templateId = button.dataset.templateId; state.artifactStudio.project = buildArtifactProject(button.dataset.templateId); state.artifactStudio.step = "compose"; renderProductView(); }));
+  content.querySelectorAll("[data-select-artifact-format]").forEach((button) => button.addEventListener("click", () => {
+    const format = button.dataset.selectArtifactFormat;
+    if (format === "video") return openNotebookDraft("video");
+    state.artifactStudio.format = format; state.artifactStudio.step = "template"; renderProductView();
+  }));
+  content.querySelectorAll("[data-template-id]").forEach((button) => button.addEventListener("click", () => { state.artifactStudio.templateId = button.dataset.templateId; state.artifactStudio.project = buildArtifactProject(button.dataset.templateId); state.artifactStudio.projects[state.artifactStudio.format] = state.artifactStudio.project; state.artifactStudio.step = "compose"; renderProductView(); }));
   content.querySelectorAll("[data-project-field]").forEach((input) => input.addEventListener("input", () => { state.artifactStudio.project[input.dataset.projectField] = input.value; }));
   content.querySelectorAll("[data-project-point]").forEach((input) => input.addEventListener("input", () => { state.artifactStudio.project.key_points[Number(input.dataset.projectPoint)] = input.value; }));
   content.querySelectorAll("input[data-image-slot]").forEach((input) => input.addEventListener("change", () => attachProjectImage(input.dataset.imageSlot, input.files?.[0])));
@@ -1904,9 +2059,10 @@ setProductView = function setArtifactProductView(view) {
 
 handleProductAction = function handleArtifactProductAction(action, trigger = null) {
   const studio = state.artifactStudio;
-  if (action === "add-notebook") return createNotebookWorkspace();
+  if (action === "add-notebook") return openNotebookCreateDialog();
   if (action === "open-notebook" || action === "open-notebook-workspace") { studio.notebookMode = "landing"; studio.notebookTab = "overview"; return setProductView("notebook"); }
-  if (action === "create-notebook-workspace") return createNotebookWorkspace();
+  if (action === "create-notebook-workspace") return openNotebookCreateDialog();
+  if (action === "close-notebook-create") { studio.notebookCreateDialog = null; studio.notebookCreateError = null; return renderProductView(); }
   if (action === "back-to-notebook-landing") { studio.notebookMode = "landing"; return setProductView("notebook"); }
   if (action === "publish-notebook-workspace") return openNotebookPublish();
   if (action === "close-notebook-publish") { studio.notebookPublish = null; return renderProductView(); }
@@ -1917,7 +2073,11 @@ handleProductAction = function handleArtifactProductAction(action, trigger = nul
     const points = [...(activeNotebookRecord()?.content_brief?.points || []), { point_id: `point:manual-${crypto.randomUUID()}`, statement: "New key point", intended_use: "key_fact", priority: "supporting", citations: [], provenance: "author_input", author_notes: "", review_status: "edited" }];
     return persistNotebookPoints(points);
   }
-  if (action === "finalize-notebook-content") return saveNotebookContent("finalize").then((notebook) => { if (notebook) showToast("Key points finalized", `Content brief version ${notebook.content_brief.version} is ready for output creation.`); });
+  if (action === "finalize-notebook-content") return saveNotebookContent("finalize").then((notebook) => {
+    if (!notebook) return;
+    createInitialNotebookDrafts();
+  });
+  if (action === "create-all-notebook-drafts") return createInitialNotebookDrafts();
   if (action === "continue-notebook-output") {
     const notebook = activeNotebookRecord();
     if (!notebook?.selected_output || notebook.content_brief?.status !== "approved") return;
@@ -1959,6 +2119,7 @@ handleProductAction = function handleArtifactProductAction(action, trigger = nul
   if (action === "populate-project-with-ai") return populateProjectWithAI();
   if (action === "generate-artifact-preview") { studio.project.status = "preview_ready"; studio.step = "preview"; return renderProductView(); }
   if (action === "publish-artifact") return publishArtifactProject();
+  if (action === "approve-presentation-for-video") return approvePresentationAndCreateVideo();
   if (action === "resume-brief") { studio.step = studio.brief.points.length ? "brief" : "review"; return setProductView("library"); }
   if (action === "refresh-integration-status") return refreshIntegrationStatus();
   return legacyStudioAction(action, trigger);
