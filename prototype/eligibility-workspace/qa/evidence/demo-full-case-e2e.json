@@ -1,71 +1,10 @@
 {
-  "generated_at": "2026-07-30T20:21:21.775Z",
-  "base_url": "http://127.0.0.1:8112",
+  "generated_at": "2026-07-30T20:28:17.704Z",
+  "base_url": "https://eligibility-workspace-nu.vercel.app",
   "browser": "Chromium headless",
   "passed": true,
   "console_errors": [],
-  "failed_responses": [
-    {
-      "status": 404,
-      "url": "http://127.0.0.1:8112/api/studio/integrations"
-    },
-    {
-      "status": 404,
-      "url": "http://127.0.0.1:8112/open-notebook/api/sources?notebook_id=notebook%3Axqrdbt77uo7bbnf11fjl&limit=100"
-    },
-    {
-      "status": 404,
-      "url": "http://127.0.0.1:8112/open-notebook/api/notebooks/notebook%3Axqrdbt77uo7bbnf11fjl"
-    },
-    {
-      "status": 404,
-      "url": "http://127.0.0.1:8112/open-notebook/api/notes?notebook_id=notebook%3Axqrdbt77uo7bbnf11fjl"
-    },
-    {
-      "status": 404,
-      "url": "http://127.0.0.1:8112/api/studio/library-sources?page_size=200"
-    },
-    {
-      "status": 404,
-      "url": "http://127.0.0.1:8112/api/studio/notebooks?page_size=100"
-    },
-    {
-      "status": 404,
-      "url": "http://127.0.0.1:8112/api/studio/integrations"
-    },
-    {
-      "status": 404,
-      "url": "http://127.0.0.1:8112/api/hume/health"
-    },
-    {
-      "status": 404,
-      "url": "http://127.0.0.1:8112/hume/health"
-    },
-    {
-      "status": 501,
-      "url": "http://127.0.0.1:8112/api/studio/coach/recommend"
-    },
-    {
-      "status": 501,
-      "url": "http://127.0.0.1:8112/api/performance/attempts/finalize"
-    },
-    {
-      "status": 404,
-      "url": "http://127.0.0.1:8112/api/hume/health"
-    },
-    {
-      "status": 404,
-      "url": "http://127.0.0.1:8112/hume/health"
-    },
-    {
-      "status": 501,
-      "url": "http://127.0.0.1:8112/api/studio/coach/recommend"
-    },
-    {
-      "status": 501,
-      "url": "http://127.0.0.1:8112/api/performance/attempts/finalize"
-    }
-  ],
+  "failed_responses": [],
   "scenarios": [
     {
       "id": "BO-001",
@@ -229,7 +168,7 @@
         }
       ],
       "attempt": {
-        "attempt_id": "attempt:bo-1785442867133",
+        "attempt_id": "attempt:bo-1785443251474",
         "scenario_id": "BO-001",
         "score": 99,
         "processing_score": 60,
@@ -253,8 +192,9 @@
         "event_count": 100,
         "voice_turn_count": 57,
         "completion_state": "complete",
+        "sync_status": "saved",
         "sync_payload_bytes": {
-          "metadata": 352097,
+          "metadata": 352016,
           "transcript": 19739,
           "replay": 45969,
           "screenshots": [
@@ -419,7 +359,7 @@
         }
       ],
       "attempt": {
-        "attempt_id": "attempt:bo-1785442879558",
+        "attempt_id": "attempt:bo-1785443280754",
         "scenario_id": "BO-002",
         "score": 99,
         "processing_score": 60,
@@ -443,8 +383,9 @@
         "event_count": 91,
         "voice_turn_count": 48,
         "completion_state": "complete",
+        "sync_status": "saved",
         "sync_payload_bytes": {
-          "metadata": 321721,
+          "metadata": 321691,
           "transcript": 16452,
           "replay": 41494,
           "screenshots": [
