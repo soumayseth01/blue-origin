@@ -219,7 +219,7 @@ try {
   await page.locator('[data-nj-open-output="video"]').click();
   if (results.integrations.heygen) {
     await page.locator('[data-nj-action="generate-video"]').click();
-    await page.getByText(/HeyGen is rendering/).waitFor({ timeout: 30000 });
+    await page.getByText(/HeyGen is rendering/).first().waitFor({ timeout: 30000 });
     for (let attempt = 0; attempt < 80; attempt += 1) {
       const current = await json(await context.request.get(`${baseURL}/api/studio/notebooks/${notebookId}/video`));
       const status = current.artifact_projects?.video?.status;
