@@ -63,6 +63,26 @@ async function download(action, expectedSuffix) {
   results.downloads[expectedSuffix] = { name, path };
 }
 
+async function downloadMany(action, expectedSuffixes) {
+  const items = [];
+  const collect = (item) => items.push(item);
+  page.on("download", collect);
+  await page.locator(`[data-nj-action="${action}"]`).first().click();
+  for (let attempt = 0; attempt < 120 && items.length < expectedSuffixes.length; attempt += 1) {
+    await new Promise((resolveWait) => setTimeout(resolveWait, 250));
+  }
+  page.off("download", collect);
+  assert.equal(items.length, expectedSuffixes.length, `Expected ${expectedSuffixes.length} downloads, received ${items.length}`);
+  for (const expectedSuffix of expectedSuffixes) {
+    const item = items.find((candidate) => candidate.suggestedFilename().endsWith(expectedSuffix));
+    assert.ok(item, `Missing ${expectedSuffix}; received ${items.map((candidate) => candidate.suggestedFilename()).join(", ")}`);
+    const name = item.suggestedFilename();
+    const path = resolve(evidenceDir, name);
+    await item.saveAs(path);
+    results.downloads[expectedSuffix] = { name, path };
+  }
+}
+
 let notebookId;
 let sourceId;
 try {
@@ -81,7 +101,11 @@ try {
 
   await page.locator('[data-nj-action="create"]').click();
   await shot(2, "create-notebook-modal", ".nj-modal");
+  assert.equal(await page.locator("#njCreateForm .nj-btn.primary").isDisabled(), true, "Create must remain disabled until the prompt is valid");
   await page.locator("#njCreatePrompt").fill("Help eligibility workers explain, verify, and document household changes with program differences kept explicit.");
+  assert.equal(await page.locator("#njCreatePromptCount").textContent(), "112 of 500 characters");
+  assert.equal(await page.locator("#njCreateForm .nj-btn.primary").isEnabled(), true, "Arbitrary valid text must enable notebook creation");
+  assert.equal(await page.locator(".nj-error").count(), 0, "Typing a valid prompt must not render an error state");
   await page.locator("#njCreateForm").evaluate((form) => form.requestSubmit());
   await page.locator(".nj-empty").first().waitFor();
   notebookId = await page.evaluate(() => state.artifactStudio.activeNotebookId);
@@ -185,7 +209,7 @@ try {
   await shot(13, "knowledge-check-editor");
   await page.locator('[data-nj-action="approve-quiz"]').click();
   await page.getByText(/All changes saved|Ready to approve/).first().waitFor().catch(()=>{});
-  await download("export-quiz", ".html");
+  await downloadMany("export-quiz", [".html", ".json"]);
   const quizJson = await context.request.get(`${baseURL}/api/studio/notebooks/${notebookId}/exports/quiz-json`);
   assert.equal(quizJson.status(), 200); results.downloads["quiz.json"] = { bytes: (await quizJson.body()).length };
 
