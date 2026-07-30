@@ -67,7 +67,9 @@ state.artifactStudio = {
   notebookQuestionError: null,
   notebookChatDraft: "",
   notebookAnalysisStatus: "idle",
+  notebookAnalysisPending: false,
   notebookContentStatus: "idle",
+  notebookContentError: null,
   notebookCitation: null,
   step: "select",
   selectedBlockIds: new Set(),
@@ -780,8 +782,13 @@ function syncArtifactBriefFromNotebook(notebook) {
 async function analyzeNotebookContent(mode = "replace") {
   const studio = state.artifactStudio;
   const notebook = activeNotebookRecord();
-  if (!notebook?.source_ids?.length || studio.notebookAnalysisStatus === "loading") return;
+  if (!notebook?.source_ids?.length) return;
+  if (studio.notebookAnalysisStatus === "loading") {
+    studio.notebookAnalysisPending = true;
+    return;
+  }
   studio.notebookAnalysisStatus = "loading";
+  studio.notebookContentError = null;
   notebook.source_summary = { ...(notebook.source_summary || {}), status: "analyzing", error: null };
   renderProductView();
   try {
@@ -799,6 +806,10 @@ async function analyzeNotebookContent(mode = "replace") {
   }
   studio.notebookAnalysisStatus = "idle";
   renderProductView();
+  if (studio.notebookAnalysisPending) {
+    studio.notebookAnalysisPending = false;
+    analyzeNotebookContent("replace");
+  }
 }
 
 async function saveNotebookContent(action, payload = {}) {
@@ -806,6 +817,7 @@ async function saveNotebookContent(action, payload = {}) {
   const notebook = activeNotebookRecord();
   if (!notebook || studio.notebookContentStatus === "saving") return null;
   studio.notebookContentStatus = "saving";
+  studio.notebookContentError = null;
   try {
     const updated = await studioJSON(`/api/studio/notebooks/${encodeURIComponent(notebook.id)}/content`, {
       method: "PATCH",
@@ -815,11 +827,14 @@ async function saveNotebookContent(action, payload = {}) {
     Object.assign(notebook, updated);
     syncArtifactBriefFromNotebook(notebook);
     studio.notebookContentStatus = "idle";
+    studio.notebookContentError = null;
     renderProductView();
     return notebook;
   } catch (error) {
     studio.notebookContentStatus = "idle";
-    showToast("Notebook content was not saved", error.message, "!");
+    const issues = error.details?.issues || [];
+    studio.notebookContentError = issues.length ? issues.join(" ") : error.message;
+    showToast("Notebook content was not saved", studio.notebookContentError, "!");
     renderProductView();
     return null;
   }
@@ -998,7 +1013,7 @@ function renderNotebookStudioWorkspace() {
       <aside class="notebook-desk-panel notebook-sources-panel"><header><div><span>Source desk</span><h3>Sources</h3></div><strong>${selectedSources.length}</strong></header><button class="notebook-add-source" data-action="open-library">${materialIcon("add")} Add from Library</button><label class="notebook-source-search">${materialIcon("search")}<input id="notebookSourceSearch" placeholder="Filter Library sources…" /></label><div class="notebook-source-list">${availableSources.map((source) => { const id = recordId(source); const selected = selectedIds.has(id); return `<label data-notebook-source-row data-title="${escapeHTML(sourceTitle(source).toLowerCase())}" class="${selected ? "selected" : ""}"><input type="checkbox" data-notebook-source="${escapeHTML(id)}" ${selected ? "checked" : ""}/><span>${materialIcon(artifactSourceDocument(source).is_policy ? "policy" : "description")}</span><div><strong>${escapeHTML(sourceTitle(source))}</strong><small>${escapeHTML(source.jurisdiction || "Organization")} · ${escapeHTML(artifactSourceDocument(source).extraction_status)}</small></div></label>`; }).join("") || `<div class="notebook-panel-empty"><span>${materialIcon("docs")}</span><strong>No Library sources available.</strong><p>${escapeHTML(state.artifactStudio.librarySourcesError || "Add an approved document to the Library first.")}</p></div>`}</div><footer><button data-action="start-artifact-flow" ${selectedSources.length ? "" : "disabled"}>${materialIcon("fact_check")} Review extracted content</button></footer></aside>
       <main class="notebook-desk-panel notebook-conversation-panel grounded"><header><div><span>Content workspace</span><h3>Sources, key points, and chat</h3></div><label><span>Purpose</span><input data-notebook-objective value="${escapeHTML(notebook.purpose || notebook.objective || "")}" placeholder="What should this notebook help create?" /></label></header><div class="notebook-grounded-scroll">
         <section class="notebook-summary-card ${summary.status}"><header><div><span>${materialIcon("summarize")}</span><div><small>Source summary</small><strong>${summary.status === "current" ? "Grounded in selected documents" : summary.status === "stale" ? "Sources changed" : summary.status === "error" ? "Summary unavailable" : selectedSources.length ? "Preparing source summary" : "Select sources to begin"}</strong></div></div>${selectedSources.length ? `<button type="button" data-action="retry-notebook-analysis" ${analyzing ? "disabled" : ""}>${analyzing ? "Analyzing…" : summary.status === "current" ? "Refresh" : "Retry"}</button>` : ""}</header>${analyzing ? `<div class="notebook-analysis-loading">${materialIcon("progress_activity")} Reading extracted source content and building cited key points…</div>` : summary.status === "error" ? `<div class="notebook-analysis-error" role="alert">${escapeHTML(summary.error || "The summary could not be generated.")}</div>` : summary.text ? `<p>${escapeHTML(summary.text)}</p>${renderNotebookCitations(summary.citations || [])}` : `<p>Add one or more stored Library documents. Their extracted content will be summarized automatically.</p>`}</section>
-        <section class="notebook-key-points"><header><div><small>Content brief</small><h3>Key points</h3><span>${points.length} point${points.length === 1 ? "" : "s"} · ${brief.status === "approved" ? `finalized v${brief.version}` : brief.status === "stale" ? "needs review" : "draft"}</span></div><div><button type="button" data-action="add-notebook-key-point">${materialIcon("add")} Add</button><button type="button" data-action="expand-notebook-key-points" ${!selectedSources.length || analyzing ? "disabled" : ""}>${materialIcon("auto_awesome")} Find more</button></div></header><div class="notebook-key-point-list">${points.map((point, index) => renderNotebookPoint(point, index, points.length)).join("") || `<div class="notebook-key-point-empty">Candidate key points will appear after source analysis.</div>`}</div><footer><button class="button button-primary" type="button" data-action="finalize-notebook-content" ${!points.length || state.artifactStudio.notebookContentStatus === "saving" ? "disabled" : ""}>${brief.status === "approved" ? `Finalize new version` : "Finalize key points"}</button></footer></section>
+        <section class="notebook-key-points"><header><div><small>Content brief</small><h3>Key points</h3><span>${points.length} point${points.length === 1 ? "" : "s"} · ${brief.status === "approved" ? `finalized v${brief.version}` : brief.status === "stale" ? "needs review" : "draft"}</span></div><div><button type="button" data-action="add-notebook-key-point">${materialIcon("add")} Add</button><button type="button" data-action="expand-notebook-key-points" ${!selectedSources.length || analyzing ? "disabled" : ""}>${materialIcon("auto_awesome")} Find more</button></div></header><div class="notebook-key-point-list">${points.map((point, index) => renderNotebookPoint(point, index, points.length)).join("") || `<div class="notebook-key-point-empty">Candidate key points will appear after source analysis.</div>`}</div><footer>${state.artifactStudio.notebookContentError ? `<p class="notebook-finalize-error">${materialIcon("error")} ${escapeHTML(state.artifactStudio.notebookContentError)}</p>` : ""}<button class="button button-primary" type="button" data-action="finalize-notebook-content" ${!points.length || state.artifactStudio.notebookContentStatus === "saving" ? "disabled" : ""}>${brief.status === "approved" ? `Finalize new version` : "Finalize key points"}</button></footer></section>
         <section class="notebook-grounded-chat"><header><div><small>Source chat</small><h3>Ask your documents</h3></div><span>${notebook.chat_messages?.length || 0} messages</span></header><div class="notebook-conversation-body">${renderNotebookChat(notebook)}</div><form class="notebook-chat-composer" id="notebookChatForm"><div><textarea id="notebookChatInput" placeholder="Ask a question or request more key points…" ${canChat ? "" : "disabled"}>${escapeHTML(state.artifactStudio.notebookChatDraft)}</textarea><button aria-label="Ask selected sources" ${canChat ? "" : "disabled"}>${materialIcon(asking ? "progress_activity" : "arrow_upward")}</button></div><footer><span>${selectedSources.length} selected source${selectedSources.length === 1 ? "" : "s"}</span>${state.artifactStudio.notebookQuestionError ? `<strong>${escapeHTML(state.artifactStudio.notebookQuestionError)}</strong>` : `<small>${canChat ? "Answers use only attached source content and include citations." : "Complete source analysis to enable chat."}</small>`}</footer></form></section>
       </div></main>
       <aside class="notebook-desk-panel notebook-output-panel"><header><div><span>Creation studio</span><h3>Your editable drafts</h3></div><span class="brief-readiness ${brief.status}">${brief.status === "approved" ? `Brief v${brief.version}` : "Finalize content"}</span></header><p class="notebook-output-guidance">Finalize the shared content once, then review each draft. Video begins with an approved presentation.</p><div class="notebook-output-grid">${artifactFormatCards.map((format) => { const locked = format.dependent && !presentationVersion; const project = projects[format.id]; const status = locked ? "After presentation approval" : project ? project.status === "approved" ? `Approved v${project.version}` : "Editable draft" : format.dependent ? `From Presentation v${presentationVersion}` : "Ready to create"; return `<button type="button" data-open-notebook-draft="${format.id}" class="${project ? "has-draft" : ""} ${locked ? "locked" : ""}" ${locked ? "disabled" : ""}><span>${materialIcon(locked ? "lock" : format.icon)}</span><div><strong>${escapeHTML(format.title)}</strong><small>${escapeHTML(status)}</small></div>${materialIcon(project ? "edit" : locked ? "link" : "chevron_right")}</button>`; }).join("")}</div><section class="notebook-brief-card"><span>${materialIcon(brief.status === "approved" ? "verified" : "fact_check")}</span><div><strong>${brief.status === "approved" ? `Content finalized · v${brief.version}` : "Finalize the shared content first"}</strong><p>${brief.status === "approved" ? `${points.length} controlled key points can populate all three initial drafts.` : "Sources, summary, and key points stay shared across every deliverable."}</p></div>${brief.status === "approved" && !projects.job_aid ? `<button data-action="create-all-notebook-drafts">Create all 3 drafts</button>` : brief.status === "approved" ? `<button data-open-notebook-draft="presentation">Review presentation</button>` : ""}</section><section class="notebook-output-shelf"><header><div><span>Published outputs</span><strong>${state.artifactStudio.releases.length}</strong></div><button data-action="open-releases">View all</button></header>${state.artifactStudio.releases.slice(0, 3).map((release) => `<article><span>${materialIcon(release.format === "job_aid" ? "description" : release.format === "quiz" ? "quiz" : release.format === "video" ? "movie" : "slideshow")}</span><div><strong>${escapeHTML(release.title)}</strong><small>${escapeHTML(release.format.replaceAll("_", " "))}${release.derived_from?.version ? ` · from Presentation v${release.derived_from.version}` : ""}</small></div></article>`).join("") || `<div class="notebook-output-empty">Approved files will appear here with their source and version history.</div>`}</section></aside>

@@ -92,12 +92,19 @@ function mapNotebook(row, sources = [], { includeContent = false } = {}) {
     sources,
     published_release: publishedRelease,
   };
-  if (includeContent) Object.assign(mapped, {
-    source_summary: { ...EMPTY_SUMMARY, ...(row.source_summary || {}) },
-    content_brief: { ...EMPTY_BRIEF, ...(row.content_brief || {}), points: row.content_brief?.points || [] },
-    selected_output: row.selected_output || null,
-    chat_messages: Array.isArray(row.chat_messages) ? row.chat_messages : [],
-  });
+  if (includeContent) {
+    const signature = sources.length ? sourceSignature(sources) : "";
+    const sourceSummary = { ...EMPTY_SUMMARY, ...(row.source_summary || {}) };
+    const contentBrief = { ...EMPTY_BRIEF, ...(row.content_brief || {}), points: row.content_brief?.points || [] };
+    if (sourceSummary.status === "current" && sourceSummary.source_signature !== signature) sourceSummary.status = "stale";
+    if (["approved", "draft"].includes(contentBrief.status) && contentBrief.source_signature && contentBrief.source_signature !== signature) contentBrief.status = "stale";
+    Object.assign(mapped, {
+      source_summary: sourceSummary,
+      content_brief: contentBrief,
+      selected_output: row.selected_output || null,
+      chat_messages: Array.isArray(row.chat_messages) ? row.chat_messages : [],
+    });
+  }
   return mapped;
 }
 
@@ -343,6 +350,11 @@ export async function analyzeNotebook(id, body = {}) {
     const summaryCitations = validCitations(generated.summary_citations, context.blocks);
     const generatedPoints = (generated.points || []).map((point) => normalizePoint(point, context.blocks)).filter((point) => point.citations.length);
     if (!cleanText(generated.summary, "Source summary", { required: true, max: 12_000 }) || !summaryCitations.length || !generatedPoints.length) fail("OpenAI returned content without valid source citations", 502);
+    const latestSources = await sourcesFor(sql, notebookId);
+    if (sourceSignature(latestSources) !== context.signature) {
+      await event(sql, notebookId, "content.analysis_discarded", actor.id, { reason: "sources_changed", source_signature: context.signature });
+      return getNotebook(notebookId);
+    }
     const sourceSummary = { status: "current", text: generated.summary.trim(), citations: summaryCitations, source_signature: context.signature, generated_at: new Date().toISOString(), error: null };
     const points = mergeGeneratedPoints(current.content_brief?.points || [], generatedPoints, { expand });
     const contentBrief = { ...EMPTY_BRIEF, ...(current.content_brief || {}), status: "draft", points, source_signature: context.signature, finalized_at: null };
