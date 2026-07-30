@@ -1,9 +1,71 @@
 {
-  "generated_at": "2026-07-30T20:13:37.653Z",
+  "generated_at": "2026-07-30T20:21:21.775Z",
   "base_url": "http://127.0.0.1:8112",
   "browser": "Chromium headless",
   "passed": true,
   "console_errors": [],
+  "failed_responses": [
+    {
+      "status": 404,
+      "url": "http://127.0.0.1:8112/api/studio/integrations"
+    },
+    {
+      "status": 404,
+      "url": "http://127.0.0.1:8112/open-notebook/api/sources?notebook_id=notebook%3Axqrdbt77uo7bbnf11fjl&limit=100"
+    },
+    {
+      "status": 404,
+      "url": "http://127.0.0.1:8112/open-notebook/api/notebooks/notebook%3Axqrdbt77uo7bbnf11fjl"
+    },
+    {
+      "status": 404,
+      "url": "http://127.0.0.1:8112/open-notebook/api/notes?notebook_id=notebook%3Axqrdbt77uo7bbnf11fjl"
+    },
+    {
+      "status": 404,
+      "url": "http://127.0.0.1:8112/api/studio/library-sources?page_size=200"
+    },
+    {
+      "status": 404,
+      "url": "http://127.0.0.1:8112/api/studio/notebooks?page_size=100"
+    },
+    {
+      "status": 404,
+      "url": "http://127.0.0.1:8112/api/studio/integrations"
+    },
+    {
+      "status": 404,
+      "url": "http://127.0.0.1:8112/api/hume/health"
+    },
+    {
+      "status": 404,
+      "url": "http://127.0.0.1:8112/hume/health"
+    },
+    {
+      "status": 501,
+      "url": "http://127.0.0.1:8112/api/studio/coach/recommend"
+    },
+    {
+      "status": 501,
+      "url": "http://127.0.0.1:8112/api/performance/attempts/finalize"
+    },
+    {
+      "status": 404,
+      "url": "http://127.0.0.1:8112/api/hume/health"
+    },
+    {
+      "status": 404,
+      "url": "http://127.0.0.1:8112/hume/health"
+    },
+    {
+      "status": 501,
+      "url": "http://127.0.0.1:8112/api/studio/coach/recommend"
+    },
+    {
+      "status": 501,
+      "url": "http://127.0.0.1:8112/api/performance/attempts/finalize"
+    }
+  ],
   "scenarios": [
     {
       "id": "BO-001",
@@ -167,7 +229,7 @@
         }
       ],
       "attempt": {
-        "attempt_id": "attempt:bo-1785442401232",
+        "attempt_id": "attempt:bo-1785442867133",
         "scenario_id": "BO-001",
         "score": 99,
         "processing_score": 60,
@@ -190,7 +252,23 @@
         "disclosed_fact_count": 18,
         "event_count": 100,
         "voice_turn_count": 57,
-        "completion_state": "complete"
+        "completion_state": "complete",
+        "sync_payload_bytes": {
+          "metadata": 352097,
+          "transcript": 19739,
+          "replay": 45969,
+          "screenshots": [
+            137715,
+            145748,
+            150413,
+            153829,
+            135498,
+            136444,
+            131748,
+            133580,
+            143357
+          ]
+        }
       },
       "screenshots": [
         "/Users/soumayseth/Documents/BlueOrigin/prototype/eligibility-workspace/qa/evidence/screenshots/bo-001-full-authorization.png",
@@ -341,7 +419,7 @@
         }
       ],
       "attempt": {
-        "attempt_id": "attempt:bo-1785442414148",
+        "attempt_id": "attempt:bo-1785442879558",
         "scenario_id": "BO-002",
         "score": 99,
         "processing_score": 60,
@@ -364,7 +442,23 @@
         "disclosed_fact_count": 15,
         "event_count": 91,
         "voice_turn_count": 48,
-        "completion_state": "complete"
+        "completion_state": "complete",
+        "sync_payload_bytes": {
+          "metadata": 321721,
+          "transcript": 16452,
+          "replay": 41494,
+          "screenshots": [
+            137518,
+            145496,
+            150363,
+            152335,
+            135233,
+            136285,
+            131583,
+            135369,
+            142979
+          ]
+        }
       },
       "screenshots": [
         "/Users/soumayseth/Documents/BlueOrigin/prototype/eligibility-workspace/qa/evidence/screenshots/bo-002-full-authorization.png",

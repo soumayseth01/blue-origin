@@ -156,6 +156,12 @@ async function runScenario(page, index) {
     event_count: state.latestAttempt.events.length,
     voice_turn_count: state.latestAttempt.voice_turns.length,
     completion_state: state.latestAttempt.attempt_exit.completion_state,
+    sync_payload_bytes: {
+      metadata: new Blob([JSON.stringify(attemptMetadata(state.latestAttempt))]).size,
+      transcript: new Blob([JSON.stringify(state.latestAttempt.voice_turns || [])]).size,
+      replay: new Blob([JSON.stringify({ events: state.latestAttempt.events || [], observations: state.latestAttempt.affect_observations || [] })]).size,
+      screenshots: attemptArtifactSnapshots(state.latestAttempt).map((snapshot) => dataURLToBlob(snapshot.image_ref).size),
+    },
   }));
   assert.equal(attempt.scenario_id, scenario.id);
   assert.equal(attempt.processing_score, 60);
@@ -165,6 +171,9 @@ async function runScenario(page, index) {
   assert.equal(attempt.disclosed_fact_count, scenario.facts);
   assert.equal(attempt.completion_state, "complete");
   assert.equal(attempt.passed, true);
+  assert.ok(attempt.sync_payload_bytes.metadata < 3_500_000, `Attempt metadata exceeds safe serverless request size: ${attempt.sync_payload_bytes.metadata}`);
+  assert.ok(attempt.sync_payload_bytes.screenshots.length <= 9, `Expected at most one final screenshot per stage, received ${attempt.sync_payload_bytes.screenshots.length}`);
+  console.log(`[${scenario.id}] sync payload bytes`, JSON.stringify(attempt.sync_payload_bytes));
 
   const feedbackScreenshot = path.join(screenshotDir, `${scenario.id.toLowerCase()}-full-results.png`);
   await page.screenshot({ path: feedbackScreenshot, fullPage: true });
@@ -176,9 +185,13 @@ async function runScenario(page, index) {
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 920 } });
   const errors = [];
+  const failedResponses = [];
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
     if (message.type() === "error" && !/404|favicon|not implemented|501 \(Unsupported method \('POST'\)\)/i.test(message.text())) errors.push(message.text());
+  });
+  page.on("response", (response) => {
+    if (response.status() >= 400) failedResponses.push({ status: response.status(), url: response.url() });
   });
   await page.goto(baseURL, { waitUntil: "networkidle" });
   const scenarios = [];
@@ -186,6 +199,7 @@ async function runScenario(page, index) {
     scenarios.push(await runScenario(page, index));
     await page.evaluate(() => hideFeedbackView());
   }
+  if (errors.length) console.error("Browser console errors:", errors, "Failed responses:", failedResponses);
   assert.deepEqual(errors, []);
   const evidence = {
     generated_at: new Date().toISOString(),
@@ -193,6 +207,7 @@ async function runScenario(page, index) {
     browser: "Chromium headless",
     passed: true,
     console_errors: errors,
+    failed_responses: failedResponses,
     scenarios,
   };
   const evidencePath = path.join(evidenceDir, "demo-full-case-e2e.json");

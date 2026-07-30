@@ -2883,7 +2883,16 @@ function updateAttemptSaveStatus(status) {
 }
 
 function attemptMetadata(attempt) {
-  return JSON.parse(JSON.stringify(attempt, (key, value) => key === "image_ref" && typeof value === "string" && value.startsWith("data:") ? null : value));
+  return JSON.parse(JSON.stringify(attempt, (key, value) => ["image_ref", "image_reference"].includes(key) && typeof value === "string" && value.startsWith("data:") ? null : value));
+}
+
+function attemptArtifactSnapshots(attempt) {
+  const snapshots = (attempt.screen_snapshots || []).filter((snapshot) => snapshot.image_ref?.startsWith("data:"));
+  const finalReconstructions = snapshots.filter((snapshot) => snapshot.final_reconstruction);
+  if (finalReconstructions.length) return finalReconstructions;
+  const latestByStage = new Map();
+  snapshots.forEach((snapshot) => { if (!latestByStage.has(snapshot.screen)) latestByStage.set(snapshot.screen, snapshot); });
+  return [...latestByStage.values()];
 }
 
 function dataURLToBlob(dataURL) {
@@ -2902,8 +2911,7 @@ async function queueAttemptForSync(attempt) {
 
 async function uploadAttemptArtifacts(attempt) {
   const artifacts = [];
-  for (const [index, snapshot] of (attempt.screen_snapshots || []).entries()) {
-    if (!snapshot.image_ref?.startsWith("data:")) continue;
+  for (const [index, snapshot] of attemptArtifactSnapshots(attempt).entries()) {
     artifacts.push({ type: "screenshot", name: `${String(index + 1).padStart(3, "0")}-${snapshot.snapshot_id || "capture"}.png`, body: dataURLToBlob(snapshot.image_ref) });
   }
   artifacts.push({ type: "transcript", name: "transcript.json", body: new Blob([JSON.stringify(attempt.voice_turns || [])], { type: "application/json" }) });
@@ -2920,7 +2928,7 @@ async function syncAttemptRecord(record) {
   let response = await fetch("/api/performance/attempts/finalize", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ attempt: attemptMetadata(attempt) }) });
   if (!response.ok) throw new Error((await response.json().catch(() => ({}))).detail || "Attempt metadata could not be saved");
   await uploadAttemptArtifacts(attempt);
-  const screenshotCount = (attempt.screen_snapshots || []).filter((snapshot) => snapshot.image_ref?.startsWith("data:")).length;
+  const screenshotCount = attemptArtifactSnapshots(attempt).length;
   response = await fetch(`/api/performance/attempts/${encodeURIComponent(attempt.attempt_id)}/sync-complete`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expected_artifacts: screenshotCount + 2 }) });
   if (!response.ok) throw new Error((await response.json().catch(() => ({}))).detail || "Attempt synchronization could not be completed");
   record.status = "saved"; record.saved_at = new Date().toISOString(); record.attempts = (record.attempts || 0) + 1;
