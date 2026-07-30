@@ -101,6 +101,7 @@ try {
 
   await page.locator('[data-nj-action="create"]').click();
   await shot(2, "create-notebook-modal", ".nj-modal");
+  await page.locator("#njCreatePrompt").fill("");
   assert.equal(await page.locator("#njCreateForm .nj-btn.primary").isDisabled(), true, "Create must remain disabled until the prompt is valid");
   await page.locator("#njCreatePrompt").fill("Help eligibility workers explain, verify, and document household changes with program differences kept explicit.");
   assert.equal(await page.locator("#njCreatePromptCount").textContent(), "112 of 500 characters");
